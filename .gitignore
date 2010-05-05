@@ -1,0 +1,5 @@
+MANIFEST
+dist/
+build/
+*.pyc
+_trial_temp/
