@@ -187,8 +187,8 @@ class TxPostgresPollingMixingTestCase(Psycopg2TestCase):
 
     def test_errors(self):
         """
-        Unexpected results from poll() make L{txpostgres._PollingMixin} raise an
-        exception.
+        Unexpected results from poll() make L{txpostgres._PollingMixin} raise
+        an exception.
         """
         p = FakeWrapper()
         p._pollable = PollableThing()
@@ -304,7 +304,6 @@ class _SimpleDBSetupMixin(object):
         c = self.conn.cursor()
         d = c.execute("drop table simple")
         return d.addCallback(lambda _: self.conn.close())
-
 
 
 class TxPostgresManualQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):

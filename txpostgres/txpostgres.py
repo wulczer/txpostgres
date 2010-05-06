@@ -77,7 +77,7 @@ class _PollingMixin(object):
         try:
             self._pollingState = self.pollable().poll()
         except:
-            d,  self._pollingD = self._pollingD, None
+            d, self._pollingD = self._pollingD, None
             d.errback()
             return ret
 
@@ -89,7 +89,7 @@ class _PollingMixin(object):
         elif self._pollingState == psycopg2.extensions.POLL_READ:
             self.reactor.addReader(self)
         else:
-            d,  self._pollingD = self._pollingD, None
+            d, self._pollingD = self._pollingD, None
             d.errback(UnexpectedPollResult())
 
         return ret
@@ -113,7 +113,7 @@ class _PollingMixin(object):
 
     def connectionLost(self, reason):
         if self._pollingD:
-            d,  self._pollingD = self._pollingD, None
+            d, self._pollingD = self._pollingD, None
             d.errback(reason)
 
     # forward all other access to the underlying connection
@@ -201,8 +201,8 @@ class RollbackFailed(Exception):
     @ivar connection: The connection that failed to roll back its transaction.
 
     @type originalFailure: L{failure.Failure}
-    @ivar originalFailure: The failure that caused the connection to try to roll back
-        the transaction.
+    @ivar originalFailure: The failure that caused the connection to try to
+        roll back the transaction.
     """
 
     def __init__(self, connection, originalFailure):
@@ -367,6 +367,7 @@ class Connection(_PollingMixin):
         d.addErrback(rollbackAndPassthrough, c)
 
         return d
+
 
 class ConnectionPool(object):
     """
