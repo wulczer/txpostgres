@@ -15,6 +15,16 @@ from twisted.internet import interfaces, reactor, defer
 from twisted.python import log
 
 
+try:
+    psycopg2.extensions.POLL_OK
+except AttributeError:
+    import warnings
+    warnings.warn(RuntimeWarning(
+            "psycopg2 does not have async support. "
+            "You need at least version 2.2.0 of psycopg2 "
+            "to use txpostgres."))
+
+
 class UnexpectedPollResult(Exception):
     """
     Polling returned an unexpected result.

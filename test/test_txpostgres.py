@@ -34,12 +34,16 @@ def getSkipForPsycopg2():
     try:
         psycopg2.extensions.POLL_OK
     except AttributeError:
-        return ("psycopg2 does not have async support")
+        return ("psycopg2 does not have async support. "
+                "You need at least version 2.2.0 of psycopg2 "
+                "to use txpostgres.")
     try:
         psycopg2.connect(user=DB_USER, password=DB_PASS,
                          host=DB_HOST, database=DB_NAME).close()
     except psycopg2.Error:
-        return "cannot connect to test database"
+        return ("cannot connect to test database %r "
+                "using host %r, user %r and password %r" %
+                (DB_NAME, DB_HOST, DB_USER, DB_PASS))
     return None
 
 
