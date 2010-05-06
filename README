@@ -1,0 +1,24 @@
+This is txpostgres, a Twisted wrapper for asynchronous PostgreSQL
+connections. It uses the asynchronous features of libpq, the
+PostgreSQL C library, as exposed by psycopg2.
+
+You can find more information about the psycopg2 Python driver at
+http://initd.org/psycopg/. To use txpostgres you will need a recent version of
+psycopg2, namely 2.2.0 or later.
+
+txpostgres also requires Twisted, any reasonably recent version will do.
+
+If you got txpostgres as a source tarball, you can run the automated test suite
+and install the library with:
+$ tar xjf txpostgres-x.x.x.tar.bz2
+$ cd txpostgres-x.x.x
+$ trial test
+$ sudo python setup.py install
+
+After that you can use txpostgres as a drop-in replacement for
+twisted.enterprise.adbapi. The only difference is with connection pooling,
+which is handled slightly different. Read the docstrings for the ConnectionPool
+class for more details.
+
+The library is distributed under the MIT License. You can contact the author,
+Jan Urbanski, at wulczer@wulczer.org.
