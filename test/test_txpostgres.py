@@ -24,8 +24,8 @@ CREATE TABLE simple (
 
 DB_NAME = "twisted_test"
 DB_HOST = "localhost"
-DB_USER = "wulczer"
-DB_PASS = ""
+DB_USER = "twisted_test"
+DB_PASS = "twisted_test"
 
 
 def getSkipForPsycopg2():
