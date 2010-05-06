@@ -1,4 +1,4 @@
-# Copyright (c) 2010 Twisted Matrix Laboratories.
+# Copyright (c) 2010 Jan Urbanski.
 # See LICENSE for details.
 
 """

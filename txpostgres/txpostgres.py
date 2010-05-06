@@ -1,5 +1,5 @@
-# -*- test-case-name: twisted.test.test_pgadbapi -*-
-# Copyright (c) 2010 Twisted Matrix Laboratories.
+# -*- test-case-name: test.test_txpostgres -*-
+# Copyright (c) 2010 Jan Urbanski.
 # See LICENSE for details.
 
 """
