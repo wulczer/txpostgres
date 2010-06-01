@@ -40,10 +40,10 @@ def getSkipForPsycopg2():
     try:
         psycopg2.connect(user=DB_USER, password=DB_PASS,
                          host=DB_HOST, database=DB_NAME).close()
-    except psycopg2.Error:
+    except psycopg2.Error, e:
         return ("cannot connect to test database %r "
-                "using host %r, user %r and password %r" %
-                (DB_NAME, DB_HOST, DB_USER, DB_PASS))
+                "using host %r, user %r and password %r: %s" %
+                (DB_NAME, DB_HOST, DB_USER, DB_PASS, e))
     return None
 
 
@@ -349,20 +349,6 @@ class TxPostgresManualQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.callback(c)
         return d
 
-    def test_multipleQueries(self):
-        """
-        Multiple calls to execute() without waiting for the previous one to
-        finish work and return correct results.
-        """
-        cursors = [self.conn.cursor() for _ in range(5)]
-        d = defer.gatherResults([c.execute("select %s", (i, ))
-                                 for i, c in enumerate(cursors)])
-        d.addCallback(
-            lambda cursors: self.assertEquals(
-                sorted(map(lambda c: c.fetchone()[0], cursors)),
-                [0, 1, 2, 3, 4]))
-        return d
-
     def test_errors(self):
         """
         Errors from the database are reported as failures.
@@ -424,6 +410,19 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         """
         d = self.conn.runQuery("select 1")
         return d.addCallback(self.assertEquals, [(1, )])
+
+    def test_runQueryMultiple(self):
+        """
+        Multiple calls to runQuery() without waiting for the previous one work
+        and return correct results.
+        """
+        d = defer.gatherResults([self.conn.runQuery("select %s", (i, ))
+                                 for i in range(5)])
+        d.addCallback(
+            lambda results: self.assertEquals(
+                sorted(map(lambda res: res[0][0], results)),
+                [0, 1, 2, 3, 4]))
+        return d
 
     def test_runOperation(self):
         """

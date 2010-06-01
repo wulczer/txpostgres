@@ -145,23 +145,29 @@ class Cursor(_PollingMixin):
         """
         A regular DB-API execute, but returns a Deferred.
 
+        The caller must be careful not to call this method twice on cursors
+        from the same connection without waiting for the previous execution to
+        complete.
+
         @rtype: C{Deferred}
         @return: A C{Deferred} that will fire with the results of the
             execute().
         """
-        return self._connection.lock.run(
-            self._doit, 'execute', query, params)
+        return self._doit('execute', query, params)
 
     def callproc(self, procname, params=None):
         """
         A regular DB-API callproc, but returns a Deferred.
 
+        The caller must be careful not to call this method twice on cursors
+        from the same connection without waiting for the previous execution to
+        complete.
+
         @rtype: C{Deferred}
         @return: A C{Deferred} that will fire with the results of the
             callproc().
         """
-        return self._connection.lock.run(
-            self._doit, 'callproc', procname, params)
+        return self._doit('callproc', procname, params)
 
     def _doit(self, name, *args, **kwargs):
         try:
@@ -289,10 +295,16 @@ class Connection(_PollingMixin):
         The connection is always in autocommit mode, so the query will be run
         in a one-off transaction. In case of errors a Failure will be returned.
 
+        It is safe to call this method multiple times without waiting for the
+        first query to complete.
+
         @rtype: C{Deferred}
         @return: A Deferred that will fire with the return value of the
             cursor's fetchall() method.
         """
+        return self.lock.run(self._runQuery, *args, **kwargs)
+
+    def _runQuery(self, *args, **kwargs):
         c = self.cursor()
         d = c.execute(*args, **kwargs)
         return d.addCallback(lambda c: c.fetchall())
@@ -305,9 +317,15 @@ class Connection(_PollingMixin):
         called and instead None will be returned. It is intended for statements
         that do not normally return values, like INSERT or DELETE.
 
+        It is safe to call this method multiple times without waiting for the
+        first query to complete.
+
         @rtype: C{Deferred}
         @return: A Deferred that will fire None.
         """
+        return self.lock.run(self._runOperation, *args, **kwargs)
+
+    def _runOperation(self, *args, **kwargs):
         c = self.cursor()
         d = c.execute(*args, **kwargs)
         return d.addCallback(lambda _: None)
@@ -337,6 +355,9 @@ class Connection(_PollingMixin):
         whether she still wants to be using it or just close it, because an
         open transaction might have been left open in the database.
 
+        It is safe to call this method multiple times without waiting for the
+        first query to complete.
+
         @type interaction: Any callable
         @param interaction: A callable whose first argument is a
             L{pgadbapi.Cursor}.
@@ -345,6 +366,10 @@ class Connection(_PollingMixin):
         @return: A Deferred that will file with the return value of
             'interaction'.
         """
+        return self.lock.run(
+            self._runInteraction, interaction, *args, **kwargs)
+
+    def _runInteraction(self, interaction, *args, **kwargs):
         c = self.cursor()
         d = c.execute("begin")
         d.addCallback(interaction, *args, **kwargs)
