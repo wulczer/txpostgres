@@ -381,11 +381,11 @@ class Connection(_PollingMixin):
             # maybeDeferred in case cursor.execute raises a synchronous
             # exception
             e = defer.maybeDeferred(cursor.execute, "rollback")
-            def just_panic(rf):
+            def justPanic(rf):
                 log.err(rf)
                 return defer.fail(RollbackFailed(self, f))
             # if rollback failed panic
-            e.addErrback(just_panic)
+            e.addErrback(justPanic)
             # reraise the original failure afterwards
             return e.addCallback(lambda _: f)
         d.addCallback(commitAndPassthrough, c)

@@ -494,7 +494,7 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d = self.conn.runInteraction(interaction)
         d.addCallback(lambda _: self.fail("No exception"))
 
-        def check_error(f):
+        def checkError(f):
             f.trap(txpostgres.RollbackFailed)
             original = f.value.originalFailure
             # original should reference the error that started all the mess
@@ -509,7 +509,7 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
             self.assertEquals(errors[0].value.args[0], "boom")
             # restore or we won't be able to clean up the mess
             mp.restore()
-        d.addErrback(check_error)
+        d.addErrback(checkError)
 
         # rollback for real, or tearDown won't be able to drop the table
         return d.addCallback(lambda _: self.conn.runOperation("rollback"))
