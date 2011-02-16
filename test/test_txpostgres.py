@@ -104,7 +104,7 @@ class FakeWrapper(txpostgres._PollingMixin):
         return self._pollable
 
 
-class TxPostgresPollingMixingTestCase(Psycopg2TestCase):
+class TxPostgresPollingMixinTestCase(Psycopg2TestCase):
 
     def test_empty(self):
         """

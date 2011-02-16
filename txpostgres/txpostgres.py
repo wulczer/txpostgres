@@ -335,7 +335,7 @@ class Connection(_PollingMixin):
         Run commands in a transaction and return the result.
 
         The 'interaction' is a callable that will be passed a
-        C{pgadbapi.Cursor} object. Before calling 'interaction' a new
+        C{txpostgres.Cursor} object. Before calling 'interaction' a new
         transaction will be started, so the callable can assume to be running
         all its commands in a transaction. If 'interaction' returns a
         C{Deferred} processing will wait for it to fire before proceeding.
@@ -360,7 +360,7 @@ class Connection(_PollingMixin):
 
         @type interaction: Any callable
         @param interaction: A callable whose first argument is a
-            L{pgadbapi.Cursor}.
+            L{txpostgres.Cursor}.
 
         @rtype: C{Deferred}
         @return: A Deferred that will file with the return value of
@@ -396,7 +396,7 @@ class Connection(_PollingMixin):
 
 class ConnectionPool(object):
     """
-    A poor man's pool of L{pgadbapi.Connection} instances.
+    A poor man's pool of L{txpostgres.Connection} instances.
 
     @type min: C{int}
     @ivar min: The amount of connections that will be open at start. The pool
@@ -540,7 +540,7 @@ class ConnectionPool(object):
         Run commands in a transaction and return the result.
 
         The 'interaction' is a callable that will be passed a
-        C{pgadbapi.Cursor} object. Before calling 'interaction' a new
+        C{txpostgres.Cursor} object. Before calling 'interaction' a new
         transaction will be started, so the callable can assume to be running
         all its commands in a transaction. If 'interaction' returns a
         C{Deferred} processing will wait for it to fire before proceeding.
@@ -562,7 +562,7 @@ class ConnectionPool(object):
 
         @type interaction: Any callable
         @param interaction: A callable whose first argument is a
-            L{pgadbapi.Cursor}.
+            L{txpostgres.Cursor}.
 
         @rtype: C{Deferred}
         @return: A Deferred that will file with the return value of
