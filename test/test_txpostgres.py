@@ -14,7 +14,7 @@ except ImportError:
 from txpostgres import txpostgres
 
 from twisted.trial import unittest
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 
 simple_table_schema = """
 CREATE TABLE simple (
@@ -69,6 +69,15 @@ class PollableThing(object):
 
     def fileno(self):
         return 42
+
+
+class CancellablePollableThing(PollableThing):
+
+    cancelled = False
+
+    def cancel(self):
+        assert not self.cancelled
+        self.cancelled = True
 
 
 class FakeReactor(object):
@@ -196,6 +205,31 @@ class TxPostgresPollingMixinTestCase(Psycopg2TestCase):
         p._pollable.NEXT_STATE = "foo"
         d = p.poll()
         return self.assertFailure(d, txpostgres.UnexpectedPollResult)
+
+    def test_cancel(self):
+        """
+        Cancelling a C{Deferred} returned from poll() proxies the cancellation
+        to the pollable and raises C{_CancelInProgress}.
+        """
+        p = FakeWrapper()
+        p._pollable = CancellablePollableThing()
+
+        d = p.poll()
+        self.assertRaises(txpostgres._CancelInProgress, d.cancel)
+        self.assertEquals(p._pollable.cancelled, True)
+
+    def test_noCancelSupport(self):
+        """
+        Cancelling a C{Deferred} returned from poll() with a pollable that does
+        not support cancelling just raises C{_CancelInProgress}.
+        """
+        p = FakeWrapper()
+        p._pollable = PollableThing()
+
+        d = p.poll()
+        self.assertRaises(txpostgres._CancelInProgress, d.cancel)
+        self.assertRaises(AttributeError, getattr, p._pollable, 'cancel')
+        self.assertRaises(AttributeError, getattr, p._pollable, 'cancelled')
 
 
 class TxPostgresConnectionTestCase(Psycopg2TestCase):
@@ -644,3 +678,49 @@ class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
         def simple(c):
             self.assertRaises(ValueError, pool.remove, c._connection)
         return d.addCallback(lambda pool: pool.runInteraction(simple))
+
+
+class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
+
+    def test_simpleCancellation(self):
+        d = self.conn.runQuery("select pg_sleep(1000)")
+        reactor.callLater(0, self.conn.cancel, d)
+        return self.failUnlessFailure(d, defer.CancelledError)
+
+    def test_directCancellation(self):
+        d = self.conn.runQuery("select pg_sleep(1000)")
+
+        def tryDirectCancel(d):
+            self.assertRaises(txpostgres._CancelInProgress, d.cancel)
+        reactor.callLater(0, tryDirectCancel, d)
+
+        return self.failUnlessFailure(d, defer.CancelledError)
+
+    def test_cancelInteraction(self):
+        def interaction(c):
+            d = c.execute("insert into simple values (1)")
+            d.addCallback(lambda c: c.execute("insert into simple values (2)"))
+            d.addCallback(lambda c: c.execute("select pg_sleep(1000)"))
+            return d.addCallback(lambda _: "interaction done")
+
+        d = self.conn.runInteraction(interaction)
+        # Wow, that 0.5 sure is ugly. But what can happen is that if we cancel
+        # too early, we can zap the wrong query (i.e. one of the inserts) and
+        # the pg_sleep will continue... See runInteraction's docstring.
+        reactor.callLater(0.5, self.conn.cancel, d)
+
+        d = self.failUnlessFailure(d, defer.CancelledError)
+        d.addCallback(lambda _: self.conn.runQuery(
+                "select * from simple"))
+        return d.addCallback(self.assertEquals, [])
+
+    def test_cancelMultipleQueries(self):
+        d1 = self.conn.runQuery("select pg_sleep(1000)")
+        d2 = self.conn.runQuery("select pg_sleep(1000)")
+        reactor.callLater(0, self.conn.cancel, d1)
+        reactor.callLater(0, self.conn.cancel, d2)
+
+        d1 = self.failUnlessFailure(d1, defer.CancelledError)
+        d2 = self.failUnlessFailure(d2, defer.CancelledError)
+
+        return defer.gatherResults([d1, d2])

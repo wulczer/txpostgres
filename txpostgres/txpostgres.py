@@ -12,7 +12,7 @@ from psycopg2 import extensions
 from zope.interface import implements
 
 from twisted.internet import interfaces, reactor, defer
-from twisted.python import log
+from twisted.python import failure, log
 
 
 try:
@@ -28,6 +28,11 @@ except AttributeError:
 class UnexpectedPollResult(Exception):
     """
     Polling returned an unexpected result.
+    """
+
+class _CancelInProgress(Exception):
+    """
+    A query cancellation is in progress.
     """
 
 
@@ -71,7 +76,9 @@ class _PollingMixin(object):
             the pollable reaches the OK state.
         """
         if not self._pollingD:
-            self._pollingD = defer.Deferred()
+            self._pollingD = defer.Deferred(self._cancel)
+            # transform a psycopg2 QueryCanceledError into CancelledError
+            self._pollingD.addErrback(self._handleCancellation)
         ret = self._pollingD
 
         try:
@@ -115,6 +122,21 @@ class _PollingMixin(object):
         if self._pollingD:
             d, self._pollingD = self._pollingD, None
             d.errback(reason)
+
+    def _cancel(self, d):
+        try:
+            self.pollable().cancel()
+        except AttributeError:
+            # the pollable has no cancellation support, ignore
+            pass
+        # prevent Twisted from errbacking the deferred being cancelled, because
+        # the PostgreSQL protocol requires finishing the entire polling process
+        # before reusing the connection
+        raise _CancelInProgress()
+
+    def _handleCancellation(self, f):
+        f.trap(psycopg2.extensions.QueryCanceledError)
+        return failure.Failure(defer.CancelledError())
 
     # forward all other access to the underlying connection
     def __getattr__(self, name):
@@ -392,6 +414,24 @@ class Connection(_PollingMixin):
         d.addErrback(rollbackAndPassthrough, c)
 
         return d
+
+    def cancel(self, d):
+        """
+        Cancel the current operation. The cancellation does not happen
+        immediately, because the PostgreSQL protocol requires that the
+        application waits for confirmation after the query has been cancelled.
+        Cancelling an interaction is tricky, because if the interaction
+        includes sending multiple queries to the database server, you can't
+        really be sure which one are you cancelling.
+
+        @type d: C{Deferred}
+        @param d: a Deferred returned by one of L{txpostgres.Connection}
+            methods.
+        """
+        try:
+            d.cancel()
+        except _CancelInProgress:
+            pass
 
 
 class ConnectionPool(object):
