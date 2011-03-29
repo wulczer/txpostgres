@@ -324,6 +324,18 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         d.addCallback(lambda _: conn.connect())
         return self.assertFailure(d, txpostgres.UnexpectedPollResult)
 
+    def test_openRunCloseOpen(self):
+        conn = txpostgres.Connection()
+        connargs = dict(user=DB_USER, password=DB_PASS,
+                        host=DB_HOST, database=DB_NAME)
+        d = conn.connect(**connargs)
+        d.addCallback(lambda _: conn.runQuery("select 1"))
+        # make sure the txpostgres.Cursor created by runQuery got closed,
+        # otherwise it will still be polled and will result in an error
+        d.addCallback(lambda _: conn.close())
+        d.addCallback(lambda _: conn.connect(**connargs))
+        return d.addCallback(lambda _: conn.close())
+
 
 class _SimpleDBSetupMixin(object):
 
