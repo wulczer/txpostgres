@@ -1,0 +1,15 @@
+Source: python-twisted-postgres
+Section: python
+Priority: extra
+Maintainer: Rush (Tonop) Online <rush.zlo@gmail.com>
+Build-Depends: cdbs, debhelper, python-support, python-setuptools
+Standards-Version: 3.8.3
+Homepage: https://launchpad.net/txpostgres
+
+Package: python-twisted-postgres
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}, python-twisted-core, python-psycopg2
+Description: A Twisted wrapper for asynchronous PostgreSQL connections.
+ This is txpostgres, a Twisted wrapper for asynchronous PostgreSQL
+ connections. It uses the asynchronous features of libpq, the
+ PostgreSQL C library, as exposed by psycopg2.
