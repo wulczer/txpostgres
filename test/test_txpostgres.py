@@ -14,7 +14,7 @@ except ImportError:
 from txpostgres import txpostgres
 
 from twisted.trial import unittest
-from twisted.internet import defer, reactor
+from twisted.internet import defer, posixbase, reactor
 
 simple_table_schema = """
 CREATE TABLE simple (
@@ -558,6 +558,51 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
 
         # rollback for real, or tearDown won't be able to drop the table
         return d.addCallback(lambda _: self.conn.runOperation("rollback"))
+
+    def test_terminatedConnection(self):
+        """
+        If the connection gets terminated (because of a segmentation fault,
+        administrative backend termination or other circumstances), a failure
+        wrapping the original psycopg2 error is returned and subsequent queries
+        fail with an error indicating that the connection is already closed.
+        """
+        # this tests uses pg_terminate_backend, so it only works on PostgreSQL
+        # 8.4+ and if the user running the tests is a superuser.
+        if self.conn.server_version < 84000:
+            raise unittest.SkipTest(
+                "PostgreSQL < 8.4.0 does not have pg_terminate_backend")
+
+        # check if this Twisted has a patch for #4539, otherwise the test will
+        # fail because the terminated cursor will have fileno() called on it
+        if not getattr(posixbase, '_PollLikeMixin', None):
+            raise unittest.SkipTest("This test fails on versions of Twisted "
+                                    "affected by Twisted bug #4539")
+
+        def checkSuperuser(ret):
+            if ret[0][0] != 'on':
+                raise unittest.SkipTest(
+                    "This test uses pg_terminate_backend, "
+                    "which can only be called by a database superuser")
+
+        d = self.conn.runQuery("show is_superuser")
+        d.addCallback(checkSuperuser)
+
+        def terminateAndRunQuery():
+            d = self.conn.runQuery("select pg_terminate_backend(%s)",
+                                   (self.conn.get_backend_pid(), ))
+            d = self.assertFailure(d, psycopg2.DatabaseError)
+            d.addCallback(lambda _: self.conn.runQuery("select 1"))
+            d = self.assertFailure(d, psycopg2.InterfaceError)
+
+            def restoreConnection():
+                self.conn = txpostgres.Connection()
+                return self.conn.connect(user=DB_USER, password=DB_PASS,
+                                         host=DB_HOST, database=DB_NAME)
+
+            # restore the connection, otherwise all the other tests will fail
+            return d.addCallback(lambda _: restoreConnection())
+
+        return d.addCallback(lambda _: terminateAndRunQuery())
 
     def test_connectionLostWhileRunning(self):
         cursors = []

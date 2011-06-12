@@ -333,7 +333,7 @@ class Connection(_PollingMixin):
         c = self.cursor()
         d = c.execute(*args, **kwargs)
         d.addCallback(lambda c: c.fetchall())
-        return d.addBoth(lambda ret: (c.close(), ret)[1])
+        return d.addCallback(lambda ret: (c.close(), ret)[1])
 
     def runOperation(self, *args, **kwargs):
         """
@@ -355,7 +355,7 @@ class Connection(_PollingMixin):
         c = self.cursor()
         d = c.execute(*args, **kwargs)
         d.addCallback(lambda _: None)
-        return d.addBoth(lambda ret: (c.close(), ret)[1])
+        return d.addCallback(lambda ret: (c.close(), ret)[1])
 
     def runInteraction(self, interaction, *args, **kwargs):
         """
@@ -417,7 +417,7 @@ class Connection(_PollingMixin):
             return e.addCallback(lambda _: f)
         d.addCallback(commitAndPassthrough, c)
         d.addErrback(rollbackAndPassthrough, c)
-        d.addBoth(lambda ret: (c.close(), ret)[1])
+        d.addCallback(lambda ret: (c.close(), ret)[1])
 
         return d
 
