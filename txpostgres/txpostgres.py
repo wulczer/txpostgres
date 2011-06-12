@@ -119,9 +119,12 @@ class _PollingMixin(object):
             return -1
 
     def connectionLost(self, reason):
-        if self._pollingD:
-            d, self._pollingD = self._pollingD, None
-            d.errback(reason)
+        # Do not errback self._pollingD here! We need to keep on calling poll()
+        # until it reports an error, which will errback self._pollingD with the
+        # correct failure. If we errback here, we won't finish the poll()
+        # cycle, which would leave psycopg2 in a state where it thinks there's
+        # still an async query underway.
+        return
 
     def _cancel(self, d):
         try:

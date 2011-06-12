@@ -182,17 +182,16 @@ class TxPostgresPollingMixinTestCase(Psycopg2TestCase):
 
     def test_connectionLost(self):
         """
-        Calling connectionLost() errbacks the C{Deferred} returned from poll()
-        but another connectionLost() is harmless.
+        Calls to connectionLost() get swallowed.
         """
         p = FakeWrapper()
         p._pollable = PollableThing()
+        p._pollable.NEXT_STATE = psycopg2.extensions.POLL_OK
 
         d = p.poll()
         p.connectionLost(RuntimeError("boom"))
-        d = self.assertFailure(d, RuntimeError)
         p.connectionLost(RuntimeError("bam"))
-        return d
+        return d.addCallback(self.assertEquals, p)
 
     def test_errors(self):
         """
@@ -559,6 +558,27 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
 
         # rollback for real, or tearDown won't be able to drop the table
         return d.addCallback(lambda _: self.conn.runOperation("rollback"))
+
+    def test_connectionLostWhileRunning(self):
+        cursors = []
+
+        class RetainingCursor(txpostgres.Cursor):
+
+            def __init__(self, cursor, connection):
+                cursors.append(self)
+                txpostgres.Cursor.__init__(self, cursor, connection)
+
+        mp = self.patch(self.conn, 'cursorFactory', RetainingCursor)
+
+        d1 = self.conn.runQuery("select 1")
+        d2 = self.conn.runQuery("select 1")
+
+        self.assertEquals(len(cursors), 1)
+        cursors[0].connectionLost(RuntimeError("boom"))
+
+        d = defer.gatherResults([d1, d2])
+        d.addCallback(self.assertEquals, [[(1, )], [(1, )]])
+        return d.addCallback(lambda _: mp.restore())
 
 
 class TxPostgresConnectionPoolTestCase(Psycopg2TestCase):
