@@ -8,10 +8,9 @@ driver.
 """
 
 import psycopg2
-from psycopg2 import extensions
 from zope.interface import implements
 
-from twisted.internet import interfaces, reactor, defer
+from twisted.internet import interfaces, defer
 from twisted.python import failure, log
 
 
@@ -29,6 +28,7 @@ class UnexpectedPollResult(Exception):
     """
     Polling returned an unexpected result.
     """
+
 
 class _CancelInProgress(Exception):
     """
@@ -404,17 +404,21 @@ class Connection(_PollingMixin):
         def commitAndPassthrough(ret, cursor):
             e = cursor.execute("commit")
             return e.addCallback(lambda _: ret)
+
         def rollbackAndPassthrough(f, cursor):
             # maybeDeferred in case cursor.execute raises a synchronous
             # exception
             e = defer.maybeDeferred(cursor.execute, "rollback")
+
             def justPanic(rf):
                 log.err(rf)
                 return defer.fail(RollbackFailed(self, f))
+
             # if rollback failed panic
             e.addErrback(justPanic)
             # reraise the original failure afterwards
             return e.addCallback(lambda _: f)
+
         d.addCallback(commitAndPassthrough, c)
         d.addErrback(rollbackAndPassthrough, c)
         d.addCallback(lambda ret: (c.close(), ret)[1])
@@ -533,7 +537,7 @@ class ConnectionPool(object):
         """
         self.connections.add(connection)
         self._semaphore.limit += 1
-        self._semaphore.release() # uuuugh...
+        self._semaphore.release()  # uuuugh...
 
     def _putBackAndPassthrough(self, result, connection):
         self.connections.add(connection)

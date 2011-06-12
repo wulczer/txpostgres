@@ -92,12 +92,16 @@ class FakeReactor(object):
     def reset(self):
         self.readersAdded = self.writersAdded = 0
         self.readersRemoved = self.writersRemoved = 0
+
     def addReader(self, _):
         self.readersAdded += 1
+
     def addWriter(self, _):
         self.writersAdded += 1
+
     def removeReader(self, _):
         self.readersRemoved += 1
+
     def removeWriter(self, _):
         self.writersRemoved += 1
 
@@ -288,13 +292,18 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         also make connect() return a failure.
         """
         conn = txpostgres.Connection()
+
         class BadPollable(object):
+
             def __init__(*args, **kwars):
                 pass
+
             def poll(self):
                 raise RuntimeError("booga")
+
             def close(self):
                 pass
+
         conn.connectionFactory = BadPollable
 
         d = conn.connect()
@@ -302,22 +311,29 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         d.addCallback(lambda _: conn.close())
 
         class BadThing(object):
+
             def __init__(*args, **kwargs):
                 raise RuntimeError("wooga")
+
             def close(self):
                 pass
+
         conn.connectionFactory = BadThing
 
         d.addCallback(lambda _: conn.connect())
         d = self.assertFailure(d, RuntimeError)
 
         class BrokenPollable(object):
+
             def __init__(*args, **kwars):
                 pass
+
             def poll(self):
                 return "tee hee hee"
+
             def close(self):
                 pass
+
         conn.connectionFactory = BrokenPollable
 
         d.addCallback(lambda _: conn.connect())
@@ -719,6 +735,7 @@ class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
             return c.execute("boom")
         d.addCallback(lambda _: pool.runInteraction(brokenInteraction))
         d.addCallback(lambda _: self.fail("No exception"))
+
         def checkErrorAndHotswap(f):
             f.trap(txpostgres.RollbackFailed)
             e = f.value
@@ -735,6 +752,7 @@ class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
             d = c.connect(user=DB_USER, password=DB_PASS,
                           host=DB_HOST, database=DB_NAME)
             return d.addCallback(lambda c: pool.add(c))
+
         d.addErrback(checkErrorAndHotswap)
 
         d.addCallback(lambda _: defer.gatherResults([
