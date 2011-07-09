@@ -390,7 +390,7 @@ class Connection(_PollingMixin):
             L{txpostgres.Cursor}.
 
         @rtype: C{Deferred}
-        @return: A Deferred that will file with the return value of
+        @return: A Deferred that will fire with the return value of
             'interaction'.
         """
         return self.lock.run(
