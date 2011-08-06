@@ -803,17 +803,17 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
 
     def test_cancelInteraction(self):
         def interaction(c):
+            def cancelAndPassthrough(ret):
+                reactor.callLater(0, self.conn.cancel, d)
+                return ret
+
             d = c.execute("insert into simple values (1)")
             d.addCallback(lambda c: c.execute("insert into simple values (2)"))
+            d.addCallback(cancelAndPassthrough)
             d.addCallback(lambda c: c.execute("select pg_sleep(1000)"))
             return d.addCallback(lambda _: "interaction done")
 
         d = self.conn.runInteraction(interaction)
-        # Wow, that 0.5 sure is ugly. But what can happen is that if we cancel
-        # too early, we can zap the wrong query (i.e. one of the inserts) and
-        # the pg_sleep will continue... See runInteraction's docstring.
-        reactor.callLater(0.5, self.conn.cancel, d)
-
         d = self.failUnlessFailure(d, defer.CancelledError)
         d.addCallback(lambda _: self.conn.runQuery(
                 "select * from simple"))
