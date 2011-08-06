@@ -788,12 +788,12 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         return _SimpleDBSetupMixin.setUp(self)
 
     def test_simpleCancellation(self):
-        d = self.conn.runQuery("select pg_sleep(1000)")
+        d = self.conn.runQuery("select pg_sleep(5)")
         reactor.callLater(0, self.conn.cancel, d)
         return self.failUnlessFailure(d, defer.CancelledError)
 
     def test_directCancellation(self):
-        d = self.conn.runQuery("select pg_sleep(1000)")
+        d = self.conn.runQuery("select pg_sleep(5)")
 
         def tryDirectCancel(d):
             self.assertRaises(txpostgres._CancelInProgress, d.cancel)
@@ -810,7 +810,7 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
             d = c.execute("insert into simple values (1)")
             d.addCallback(lambda c: c.execute("insert into simple values (2)"))
             d.addCallback(cancelAndPassthrough)
-            d.addCallback(lambda c: c.execute("select pg_sleep(1000)"))
+            d.addCallback(lambda c: c.execute("select pg_sleep(5)"))
             return d.addCallback(lambda _: "interaction done")
 
         d = self.conn.runInteraction(interaction)
@@ -820,8 +820,8 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         return d.addCallback(self.assertEquals, [])
 
     def test_cancelMultipleQueries(self):
-        d1 = self.conn.runQuery("select pg_sleep(1000)")
-        d2 = self.conn.runQuery("select pg_sleep(1000)")
+        d1 = self.conn.runQuery("select pg_sleep(5)")
+        d2 = self.conn.runQuery("select pg_sleep(5)")
         reactor.callLater(0, self.conn.cancel, d1)
         reactor.callLater(0, self.conn.cancel, d2)
 
