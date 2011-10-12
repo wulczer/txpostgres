@@ -164,7 +164,7 @@ class Cursor(_PollingMixin):
         self._cursor = cursor
 
     def pollable(self):
-        return self._cursor.connection
+        return self._connection.pollable()
 
     def execute(self, query, params=None):
         """
@@ -205,12 +205,6 @@ class Cursor(_PollingMixin):
     def close(self):
         _cursor, self._cursor = self._cursor, None
         return _cursor.close()
-
-    def fileno(self):
-        if self._cursor and self._connection._connection:
-            return self._cursor.connection.fileno()
-        else:
-            return -1
 
     def __getattr__(self, name):
         # the pollable is the connection, but the wrapped object is the cursor
