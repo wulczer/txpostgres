@@ -124,7 +124,14 @@ class _PollingMixin(object):
         # correct failure. If we errback here, we won't finish the poll()
         # cycle, which would leave psycopg2 in a state where it thinks there's
         # still an async query underway.
-        return
+        #
+        # If the connection got lost right after the first poll(), the Deferred
+        # returned from it will never fire, leaving the caller hanging forever,
+        # unless we push the connection state forward here. OTOH, if the
+        # connection is already closed, there's no pollable to poll, so check
+        # that before calling poll().
+        if self.pollable():
+            self.poll()
 
     def _cancel(self, d):
         try:

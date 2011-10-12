@@ -14,7 +14,7 @@ except ImportError:
 from txpostgres import txpostgres
 
 from twisted.trial import unittest
-from twisted.internet import defer, posixbase, reactor
+from twisted.internet import defer, main, posixbase, reactor
 from twisted.python import failure
 
 simple_table_schema = """
@@ -64,8 +64,8 @@ class PollableThing(object):
         self.NEXT_STATE = psycopg2.extensions.POLL_READ
 
     def poll(self):
-        if self.NEXT_STATE is None:
-            raise Exception("no next state")
+        if isinstance(self.NEXT_STATE, Exception):
+            raise self.NEXT_STATE
         return self.NEXT_STATE
 
     def fileno(self):
@@ -197,6 +197,21 @@ class TxPostgresPollingMixinTestCase(Psycopg2TestCase):
         p.connectionLost(failure.Failure(RuntimeError("boom")))
         p.connectionLost(failure.Failure(RuntimeError("bam")))
         return d.addCallback(self.assertEquals, p)
+
+    def test_connectionLostWhileWaiting(self):
+        """
+        If the connection is lost while waiting for the socket to become
+        writable, the C{Deferred} returned from poll() still errbacks.
+        """
+        p = FakeWrapper()
+        p._pollable = PollableThing()
+        p._pollable.NEXT_STATE = psycopg2.extensions.POLL_WRITE
+
+        d = p.poll()
+        p._pollable.NEXT_STATE = RuntimeError("forced poll error")
+        p.connectionLost(failure.Failure(main.CONNECTION_LOST))
+        return self.assertFailure(d, RuntimeError)
+    test_connectionLostWhileWaiting.timeout = 5
 
     def test_errors(self):
         """
