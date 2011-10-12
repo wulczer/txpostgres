@@ -15,6 +15,7 @@ from txpostgres import txpostgres
 
 from twisted.trial import unittest
 from twisted.internet import defer, posixbase, reactor
+from twisted.python import failure
 
 simple_table_schema = """
 CREATE TABLE simple (
@@ -193,8 +194,8 @@ class TxPostgresPollingMixinTestCase(Psycopg2TestCase):
         p._pollable.NEXT_STATE = psycopg2.extensions.POLL_OK
 
         d = p.poll()
-        p.connectionLost(RuntimeError("boom"))
-        p.connectionLost(RuntimeError("bam"))
+        p.connectionLost(failure.Failure(RuntimeError("boom")))
+        p.connectionLost(failure.Failure(RuntimeError("bam")))
         return d.addCallback(self.assertEquals, p)
 
     def test_errors(self):
@@ -635,7 +636,7 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d2 = self.conn.runQuery("select 1")
 
         self.assertEquals(len(cursors), 1)
-        cursors[0].connectionLost(RuntimeError("boom"))
+        cursors[0].connectionLost(failure.Failure(RuntimeError("boom")))
 
         d = defer.gatherResults([d1, d2])
         d.addCallback(self.assertEquals, [[(1, )], [(1, )]])
