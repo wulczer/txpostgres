@@ -607,17 +607,36 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         def terminateAndRunQuery():
             d = self.conn.runQuery("select pg_terminate_backend(%s)",
                                    (self.conn.get_backend_pid(), ))
-            d = self.assertFailure(d, psycopg2.DatabaseError)
-            d.addCallback(lambda _: self.conn.runQuery("select 1"))
-            d = self.assertFailure(d, psycopg2.InterfaceError)
 
-            def restoreConnection():
+            def fail(ignore):
+                self.fail("did not catch an error, instead got %r" % (ignore,))
+
+            def checkDatabaseError(f):
+                if f.check(psycopg2.DatabaseError):
+                    return f.value
+
+                if f.check(SystemError):
+                    raise unittest.SkipTest(
+                        "This test fails on versions of psycopg2 before 2.4.1 "
+                        "which have a bug in libpq error handling")
+
+                self.fail(("\nExpected: %r\nGot:\n%s"
+                           % (psycopg2.DatabaseError, str(f))))
+
+            def runSimpleQuery(_):
+                d = self.conn.runQuery("select 1")
+                return self.assertFailure(d, psycopg2.InterfaceError)
+
+            def restoreConnection(res):
                 self.conn = txpostgres.Connection()
-                return self.conn.connect(user=DB_USER, password=DB_PASS,
-                                         host=DB_HOST, database=DB_NAME)
+                d = self.conn.connect(user=DB_USER, password=DB_PASS,
+                                      host=DB_HOST, database=DB_NAME)
+                return d.addCallback(lambda _: res)
 
+            d.addCallbacks(fail, checkDatabaseError)
+            d.addCallback(runSimpleQuery)
             # restore the connection, otherwise all the other tests will fail
-            return d.addCallback(lambda _: restoreConnection())
+            return d.addBoth(restoreConnection)
 
         return d.addCallback(lambda _: terminateAndRunQuery())
 
