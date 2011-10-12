@@ -124,7 +124,7 @@ class _PollingMixin(object):
         # correct failure. If we errback here, we won't finish the poll()
         # cycle, which would leave psycopg2 in a state where it thinks there's
         # still an async query underway.
-        return
+        self.poll()
 
     def _cancel(self, d):
         try:
@@ -259,13 +259,13 @@ class Connection(_PollingMixin):
     """
 
     connectionFactory = psycopg2.connect
-    cursorFactory = Cursor
 
-    def __init__(self, reactor=None):
+    def __init__(self, reactor=None, cursorFactory = None):
         if not reactor:
             from twisted.internet import reactor
         self.reactor = reactor
         self.prefix = "connection"
+        self.cursorFactory = Cursor if cursorFactory is None else cursorFactory
 
         # this lock will be used to prevent concurrent query execution
         self.lock = defer.DeferredLock()
