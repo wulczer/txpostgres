@@ -101,6 +101,13 @@ class _PollingMixin(object):
 
         return ret
 
+    def unregister(self):
+        """
+        Remove from reactor.
+        """
+        self.reactor.removeReader(self)
+        self.reactor.removeWriter(self)
+
     def doRead(self):
         self.reactor.removeReader(self)
         self.poll()
@@ -300,6 +307,7 @@ class Connection(_PollingMixin):
         """
         Close the connection and disconnect from the database.
         """
+        self.unregister()
         _connection, self._connection = self._connection, None
         _connection.close()
 
