@@ -656,6 +656,10 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         return d.addCallback(lambda _: terminateAndRunQuery())
 
     def test_connectionLostWhileRunning(self):
+        """
+        If the connection is lost while a query is still underway, the polling
+        cycle is continued until psycopg2 either reports success or an error.
+        """
         cursors = []
 
         class RetainingCursor(txpostgres.Cursor):
@@ -670,8 +674,13 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d2 = self.conn.runQuery("select 1")
 
         self.assertEquals(len(cursors), 1)
+        # even if the cursor gets connectionLost called on it, it will continue
+        # to poll the connection, which is mandated by the API (the client
+        # can't stop polling the connection until either POLL_OK is returned or
+        # an exception is raised.
         cursors[0].connectionLost(failure.Failure(RuntimeError("boom")))
 
+        # since no error was reported from psycopg2, both Deferreds callback
         d = defer.gatherResults([d1, d2])
         d.addCallback(self.assertEquals, [[(1, )], [(1, )]])
         return d.addCallback(lambda _: mp.restore())
