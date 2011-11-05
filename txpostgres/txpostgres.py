@@ -113,25 +113,33 @@ class _PollingMixin(object):
         return self.prefix
 
     def fileno(self):
-        if self.pollable():
-            return self.pollable().fileno()
-        else:
+        # this should never get called after the pollable has been
+        # disconnected, but Twisted versions affected by bug #4539 might cause
+        # it to happen, in which case we should return -1
+        if self.pollable().closed:
             return -1
 
+        return self.pollable().fileno()
+
     def connectionLost(self, reason):
-        # Do not errback self._pollingD here! We need to keep on calling poll()
-        # until it reports an error, which will errback self._pollingD with the
-        # correct failure. If we errback here, we won't finish the poll()
-        # cycle, which would leave psycopg2 in a state where it thinks there's
-        # still an async query underway.
+        # Do not errback self._pollingD here if the connection is still open!
+        # We need to keep on calling poll() until it reports an error, which
+        # will errback self._pollingD with the correct failure. If we errback
+        # here, we won't finish the poll() cycle, which would leave psycopg2 in
+        # a state where it thinks there's still an async query underway.
         #
         # If the connection got lost right after the first poll(), the Deferred
         # returned from it will never fire, leaving the caller hanging forever,
         # unless we push the connection state forward here. OTOH, if the
-        # connection is already closed, there's no pollable to poll, so check
-        # that before calling poll().
-        if self.pollable():
+        # connection is already closed, there's no pollable to poll, so if
+        # self._pollingD is still present, the only option is to errback it to
+        # prevent its waiters from hanging (you can't poll() a closed psycopg2
+        # connection)
+        if not self.pollable().closed:
             self.poll()
+        elif self._pollingD:
+            d, self._pollingD = self._pollingD, None
+            d.errback(reason)
 
     def _cancel(self, d):
         try:
@@ -210,8 +218,7 @@ class Cursor(_PollingMixin):
         return self.poll()
 
     def close(self):
-        _cursor, self._cursor = self._cursor, None
-        return _cursor.close()
+        return self._cursor.close()
 
     def __getattr__(self, name):
         # the pollable is the connection, but the wrapped object is the cursor
@@ -285,7 +292,7 @@ class Connection(_PollingMixin):
         @rtype: C{Deferred}
         @returns: A Deferred that will fire when the connection is open.
         """
-        if self._connection:
+        if self._connection and not self._connection.closed:
             return defer.fail(AlreadyConnected())
 
         kwargs['async'] = True
@@ -300,8 +307,7 @@ class Connection(_PollingMixin):
         """
         Close the connection and disconnect from the database.
         """
-        _connection, self._connection = self._connection, None
-        _connection.close()
+        self._connection.close()
 
     def cursor(self):
         """

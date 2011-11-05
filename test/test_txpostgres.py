@@ -60,6 +60,8 @@ class PollableThing(object):
     """
     A fake thing that provides a psycopg2 pollable interface.
     """
+    closed = 0
+
     def __init__(self):
         self.NEXT_STATE = psycopg2.extensions.POLL_READ
 
@@ -182,7 +184,9 @@ class TxPostgresPollingMixinTestCase(Psycopg2TestCase):
         self.assertEquals(p.fileno(), 42)
         self.assertEquals(p.logPrefix(), "fake-wrapper")
 
-        p._pollable = None
+        # check if it will correctly return -1 after the connection got lost,
+        # to work with Twisted affected by bug #4539
+        p._pollable.closed = 1
         self.assertEquals(p.fileno(), -1)
 
     def test_connectionLost(self):
@@ -310,6 +314,7 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         conn = txpostgres.Connection()
 
         class BadPollable(object):
+            closed = 1
 
             def __init__(*args, **kwars):
                 pass
@@ -327,6 +332,7 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         d.addCallback(lambda _: conn.close())
 
         class BadThing(object):
+            closed = 1
 
             def __init__(*args, **kwargs):
                 raise RuntimeError("wooga")
@@ -340,6 +346,7 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         d = self.assertFailure(d, RuntimeError)
 
         class BrokenPollable(object):
+            closed = 1
 
             def __init__(*args, **kwars):
                 pass
