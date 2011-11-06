@@ -17,11 +17,7 @@ from twisted.trial import unittest
 from twisted.internet import defer, main, posixbase, reactor
 from twisted.python import failure
 
-simple_table_schema = """
-CREATE TABLE simple (
-  x integer
-)
-"""
+simple_table_schema = "CREATE TABLE simple (x integer)"
 
 DB_NAME = "twisted_test"
 DB_HOST = "localhost"
@@ -378,16 +374,25 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
 class _SimpleDBSetupMixin(object):
 
     def setUp(self):
-        self.conn = txpostgres.Connection()
-        d = self.conn.connect(user=DB_USER, password=DB_PASS,
-                              host=DB_HOST, database=DB_NAME)
-        d.addCallback(lambda c: c.cursor())
+        d = self.restoreConnection(None)
+        d.addCallback(lambda _: self.conn.cursor())
         return d.addCallback(lambda c: c.execute(simple_table_schema))
 
     def tearDown(self):
         c = self.conn.cursor()
         d = c.execute("drop table simple")
         return d.addCallback(lambda _: self.conn.close())
+
+    def restoreConnection(self, res):
+        """
+        Restore the connection to the database and return whatever argument has
+        been passed through. Useful as an addBoth handler for tests that
+        disconnect from the database.
+        """
+        self.conn = txpostgres.Connection()
+        d = self.conn.connect(user=DB_USER, password=DB_PASS,
+                              host=DB_HOST, database=DB_NAME)
+        return d.addCallback(lambda _: res)
 
 
 class TxPostgresManualQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
@@ -649,16 +654,10 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
                 d = self.conn.runQuery("select 1")
                 return self.assertFailure(d, psycopg2.InterfaceError)
 
-            def restoreConnection(res):
-                self.conn = txpostgres.Connection()
-                d = self.conn.connect(user=DB_USER, password=DB_PASS,
-                                      host=DB_HOST, database=DB_NAME)
-                return d.addCallback(lambda _: res)
-
             d.addCallbacks(fail, checkDatabaseError)
             d.addCallback(runSimpleQuery)
             # restore the connection, otherwise all the other tests will fail
-            return d.addBoth(restoreConnection)
+            return d.addBoth(self.restoreConnection)
 
         return d.addCallback(lambda _: terminateAndRunQuery())
 
@@ -808,7 +807,8 @@ class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
 
         d.addCallback(lambda _: defer.gatherResults([
                     pool.runQuery("select 1") for _ in range(3)]))
-        return d.addCallback(self.assertEquals, [[(1, )]] * 3)
+        d.addCallback(self.assertEquals, [[(1, )]] * 3)
+        return d.addCallback(lambda _: pool.close())
 
     def test_removeWhileBusy(self):
         """
@@ -823,7 +823,8 @@ class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
 
         def simple(c):
             self.assertRaises(ValueError, pool.remove, c._connection)
-        return d.addCallback(lambda pool: pool.runInteraction(simple))
+        d.addCallback(lambda pool: pool.runInteraction(simple))
+        return d.addCallback(lambda _: pool.close())
 
 
 class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
