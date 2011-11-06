@@ -10,7 +10,7 @@ driver.
 import psycopg2
 from zope.interface import implements
 
-from twisted.internet import interfaces, defer
+from twisted.internet import interfaces, main, defer
 from twisted.python import failure, log
 
 
@@ -215,7 +215,16 @@ class Cursor(_PollingMixin):
         except:
             return defer.fail()
 
-        return self.poll()
+        # tell the connection that a cursor is starting its poll cycle
+        self._connection.cursorRunning(self)
+
+        def finishedAndPassthrough(ret):
+            # tell the connection that the poll cycle has finished
+            self._connection.cursorFinished(self)
+            return ret
+
+        d = self.poll()
+        return d.addBoth(finishedAndPassthrough)
 
     def close(self):
         return self._cursor.close()
@@ -278,6 +287,8 @@ class Connection(_PollingMixin):
         # this lock will be used to prevent concurrent query execution
         self.lock = defer.DeferredLock()
         self._connection = None
+        # a set of cursors that should be notified about a disconnection
+        self._cursors = set()
 
     def pollable(self):
         return self._connection
@@ -307,7 +318,25 @@ class Connection(_PollingMixin):
         """
         Close the connection and disconnect from the database.
         """
+        # We'll be closing the underlying socket so stop watching it.
+        self.reactor.removeReader(self)
+        self.reactor.removeWriter(self)
         self._connection.close()
+
+        # The above closed the connection socket from C code. Normally we would
+        # get connectionLost called on all readers and writers of that socket,
+        # but not if we're using the epoll reactor. According to the epoll(2)
+        # man page, closing a file descriptor causes it to be removed from all
+        # epoll sets automatically. In that case, the reactor might not have
+        # the chance to notice that the connection has been closed. To cover
+        # that, call connectionLost explicitly on the Connection and all
+        # outstanding Cursors. It's OK if connectionLost ends up being called
+        # twice, as the second call will not have any effects.
+
+        for cursor in set(self._cursors):
+            cursor.connectionLost(main.CONNECTION_DONE)
+
+        self.connectionLost(main.CONNECTION_DONE)
 
     def cursor(self):
         """
@@ -449,6 +478,22 @@ class Connection(_PollingMixin):
             d.cancel()
         except _CancelInProgress:
             pass
+
+    def cursorRunning(self, cursor):
+        """
+        Called automatically when a L{txpostgres.Cursor} created by this
+        L{txpostgres.Connection} starts polling after executing a query. User
+        code should never have to call this method.
+        """
+        self._cursors.add(cursor)
+
+    def cursorFinished(self, cursor):
+        """
+        Called automatically when a L{txpostgres.Cursor} created by this
+        L{txpostgres.Connection} is done with polling after executing a
+        query. User code should never have to call this method.
+        """
+        self._cursors.remove(cursor)
 
 
 class ConnectionPool(object):

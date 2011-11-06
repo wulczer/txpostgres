@@ -14,7 +14,7 @@ except ImportError:
 from txpostgres import txpostgres
 
 from twisted.trial import unittest
-from twisted.internet import defer, main, posixbase, reactor
+from twisted.internet import defer, error, main, posixbase, reactor
 from twisted.python import failure
 
 simple_table_schema = "CREATE TABLE simple (x integer)"
@@ -690,6 +690,26 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d = defer.gatherResults([d1, d2])
         d.addCallback(self.assertEquals, [[(1, )], [(1, )]])
         return d.addCallback(lambda _: mp.restore())
+
+    def test_disconnectWhileRunning(self):
+        """
+        Disconnecting from the server when there is a query underway causes the
+        query to fail with ConnectionDone.
+        """
+        # check if this Twisted has a patch for #4539, otherwise the cursor
+        # will have fileno() called on it after the psycopg2 closes the
+        # connection socket, resulting in an error
+        if not getattr(posixbase, '_PollLikeMixin', None):
+            raise unittest.SkipTest("This test fails on versions of Twisted "
+                                    "affected by Twisted bug #4539")
+
+        d = self.conn.runQuery("select pg_sleep(5)")
+        reactor.callLater(0, self.conn.close)
+
+        # the query fails with a disconnected error
+        d = self.assertFailure(d, error.ConnectionDone)
+        # restore the connection, otherwise all the other tests will fail
+        return d.addBoth(self.restoreConnection)
 
 
 class TxPostgresConnectionPoolTestCase(Psycopg2TestCase):
