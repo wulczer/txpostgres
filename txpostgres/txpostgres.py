@@ -289,6 +289,8 @@ class Connection(_PollingMixin):
         self._connection = None
         # a set of cursors that should be notified about a disconnection
         self._cursors = set()
+        # observers for NOTIFY events
+        self._notifyObservers = set()
 
     def pollable(self):
         return self._connection
@@ -312,7 +314,14 @@ class Connection(_PollingMixin):
         except:
             return defer.fail()
 
-        return self.poll()
+        def startReadingAndPassthrough(ret):
+            self.reactor.addReader(self)
+            return ret
+
+        # The connection is always a reader in the reactor, to receive NOTIFY
+        # events immediately when they're available.
+        d = self.poll()
+        return d.addCallback(startReadingAndPassthrough)
 
     def close(self):
         """
@@ -485,6 +494,12 @@ class Connection(_PollingMixin):
         L{txpostgres.Connection} starts polling after executing a query. User
         code should never have to call this method.
         """
+        # The cursor will now proceed to poll the psycopg2 connection, so stop
+        # polling it ourselves until it's done. Failure to do so would result
+        # in the connection "stealing" the POLL_OK result that appears after
+        # the query is completed and the Deferred returned from the cursor's
+        # poll() will never fire.
+        self.reactor.removeReader(self)
         self._cursors.add(cursor)
 
     def cursorFinished(self, cursor):
@@ -494,6 +509,70 @@ class Connection(_PollingMixin):
         query. User code should never have to call this method.
         """
         self._cursors.remove(cursor)
+        # The cursor is done polling, resume watching the connection for NOTIFY
+        # events. Be careful to check the connection state, because it might
+        # have been closed while the cursor was polling and adding ourselves as
+        # a reader to a closed connection would be an error.
+        if not self._connection.closed:
+            self.reactor.addReader(self)
+
+    def doRead(self):
+        # call superclass to handle the pending read event on the socket
+        _PollingMixin.doRead(self)
+
+        # check for NOTIFY events
+        while self._connection.notifies:
+            notify = self._connection.notifies.pop()
+            # don't iterate over self._notifyObservers directly because the
+            # observer function might call removeNotifyObserver, thus modifying
+            # the set while it's being iterated
+            for observer in self.getNotifyObservers():
+                # don't allow exceptions from observers to propagate, as this
+                # method is called from doRead -- exceptions here would lead to
+                # a disconnect
+                try:
+                    observer(notify)
+                except:
+                    log.err()
+
+        # continue watching for NOTIFY events, but be careful to check the
+        # connection state in case one of the notify handler function caused a
+        # disconnection
+        if not self._connection.closed:
+            self.reactor.addReader(self)
+
+    def addNotifyObserver(self, observer):
+        """
+        Add an observer function that will get called whenever a NOTIFY event
+        is delivered to this connection. Any number of observers can be added
+        to a connection. Adding an observer that's already been added is
+        ignored.
+
+        @type observer: Any callable
+        @param observer: A callable whose first argument is a
+            L{psycopg2.extensions.Notify}.
+        """
+        self._notifyObservers.add(observer)
+
+    def removeNotifyObserver(self, observer):
+        """
+        Remove a previously added observer function. Removing an observer
+        that's never been added will be ignored.
+
+        @type observer: Any callable
+        @param observer: A callable that should no longer be called on NOTIFY
+            events.
+        """
+        self._notifyObservers.discard(observer)
+
+    def getNotifyObservers(self):
+        """
+        Get the currently registered notify observers.
+
+        @rtype: C{set}
+        @return: An set of callables that will get called on NOTIFY events.
+        """
+        return set(self._notifyObservers)
 
 
 class ConnectionPool(object):
