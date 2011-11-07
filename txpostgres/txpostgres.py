@@ -10,7 +10,7 @@ driver.
 import psycopg2
 from zope.interface import implements
 
-from twisted.internet import interfaces, defer
+from twisted.internet import interfaces, main, defer
 from twisted.python import failure, log
 
 
@@ -101,13 +101,6 @@ class _PollingMixin(object):
 
         return ret
 
-    def unregister(self):
-        """
-        Remove from reactor.
-        """
-        self.reactor.removeReader(self)
-        self.reactor.removeWriter(self)
-
     def doRead(self):
         self.reactor.removeReader(self)
         if self.pollable():
@@ -122,25 +115,33 @@ class _PollingMixin(object):
         return self.prefix
 
     def fileno(self):
-        if self.pollable():
-            return self.pollable().fileno()
-        else:
+        # this should never get called after the pollable has been
+        # disconnected, but Twisted versions affected by bug #4539 might cause
+        # it to happen, in which case we should return -1
+        if self.pollable().closed:
             return -1
 
+        return self.pollable().fileno()
+
     def connectionLost(self, reason):
-        # Do not errback self._pollingD here! We need to keep on calling poll()
-        # until it reports an error, which will errback self._pollingD with the
-        # correct failure. If we errback here, we won't finish the poll()
-        # cycle, which would leave psycopg2 in a state where it thinks there's
-        # still an async query underway.
+        # Do not errback self._pollingD here if the connection is still open!
+        # We need to keep on calling poll() until it reports an error, which
+        # will errback self._pollingD with the correct failure. If we errback
+        # here, we won't finish the poll() cycle, which would leave psycopg2 in
+        # a state where it thinks there's still an async query underway.
         #
         # If the connection got lost right after the first poll(), the Deferred
         # returned from it will never fire, leaving the caller hanging forever,
         # unless we push the connection state forward here. OTOH, if the
-        # connection is already closed, there's no pollable to poll, so check
-        # that before calling poll().
-        if self.pollable():
+        # connection is already closed, there's no pollable to poll, so if
+        # self._pollingD is still present, the only option is to errback it to
+        # prevent its waiters from hanging (you can't poll() a closed psycopg2
+        # connection)
+        if not self.pollable().closed:
             self.poll()
+        elif self._pollingD:
+            d, self._pollingD = self._pollingD, None
+            d.errback(reason)
 
     def _cancel(self, d):
         try:
@@ -216,11 +217,19 @@ class Cursor(_PollingMixin):
         except:
             return defer.fail()
 
-        return self.poll()
+        # tell the connection that a cursor is starting its poll cycle
+        self._connection.cursorRunning(self)
+
+        def finishedAndPassthrough(ret):
+            # tell the connection that the poll cycle has finished
+            self._connection.cursorFinished(self)
+            return ret
+
+        d = self.poll()
+        return d.addBoth(finishedAndPassthrough)
 
     def close(self):
-        _cursor, self._cursor = self._cursor, None
-        return _cursor.close()
+        return self._cursor.close()
 
     def __getattr__(self, name):
         # the pollable is the connection, but the wrapped object is the cursor
@@ -280,6 +289,10 @@ class Connection(_PollingMixin):
         # this lock will be used to prevent concurrent query execution
         self.lock = defer.DeferredLock()
         self._connection = None
+        # a set of cursors that should be notified about a disconnection
+        self._cursors = set()
+        # observers for NOTIFY events
+        self._notifyObservers = set()
 
     def pollable(self):
         return self._connection
@@ -294,7 +307,7 @@ class Connection(_PollingMixin):
         @rtype: C{Deferred}
         @returns: A Deferred that will fire when the connection is open.
         """
-        if self._connection:
+        if self._connection and not self._connection.closed:
             return defer.fail(AlreadyConnected())
 
         kwargs['async'] = True
@@ -303,15 +316,38 @@ class Connection(_PollingMixin):
         except:
             return defer.fail()
 
-        return self.poll()
+        def startReadingAndPassthrough(ret):
+            self.reactor.addReader(self)
+            return ret
+
+        # The connection is always a reader in the reactor, to receive NOTIFY
+        # events immediately when they're available.
+        d = self.poll()
+        return d.addCallback(startReadingAndPassthrough)
 
     def close(self):
         """
         Close the connection and disconnect from the database.
         """
-        self.unregister()
-        _connection, self._connection = self._connection, None
-        _connection.close()
+        # We'll be closing the underlying socket so stop watching it.
+        self.reactor.removeReader(self)
+        self.reactor.removeWriter(self)
+        self._connection.close()
+
+        # The above closed the connection socket from C code. Normally we would
+        # get connectionLost called on all readers and writers of that socket,
+        # but not if we're using the epoll reactor. According to the epoll(2)
+        # man page, closing a file descriptor causes it to be removed from all
+        # epoll sets automatically. In that case, the reactor might not have
+        # the chance to notice that the connection has been closed. To cover
+        # that, call connectionLost explicitly on the Connection and all
+        # outstanding Cursors. It's OK if connectionLost ends up being called
+        # twice, as the second call will not have any effects.
+
+        for cursor in set(self._cursors):
+            cursor.connectionLost(main.CONNECTION_DONE)
+
+        self.connectionLost(main.CONNECTION_DONE)
 
     def cursor(self):
         """
@@ -453,6 +489,92 @@ class Connection(_PollingMixin):
             d.cancel()
         except _CancelInProgress:
             pass
+
+    def cursorRunning(self, cursor):
+        """
+        Called automatically when a L{txpostgres.Cursor} created by this
+        L{txpostgres.Connection} starts polling after executing a query. User
+        code should never have to call this method.
+        """
+        # The cursor will now proceed to poll the psycopg2 connection, so stop
+        # polling it ourselves until it's done. Failure to do so would result
+        # in the connection "stealing" the POLL_OK result that appears after
+        # the query is completed and the Deferred returned from the cursor's
+        # poll() will never fire.
+        self.reactor.removeReader(self)
+        self._cursors.add(cursor)
+
+    def cursorFinished(self, cursor):
+        """
+        Called automatically when a L{txpostgres.Cursor} created by this
+        L{txpostgres.Connection} is done with polling after executing a
+        query. User code should never have to call this method.
+        """
+        self._cursors.remove(cursor)
+        # The cursor is done polling, resume watching the connection for NOTIFY
+        # events. Be careful to check the connection state, because it might
+        # have been closed while the cursor was polling and adding ourselves as
+        # a reader to a closed connection would be an error.
+        if not self._connection.closed:
+            self.reactor.addReader(self)
+
+    def doRead(self):
+        # call superclass to handle the pending read event on the socket
+        _PollingMixin.doRead(self)
+
+        # check for NOTIFY events
+        while self._connection.notifies:
+            notify = self._connection.notifies.pop()
+            # don't iterate over self._notifyObservers directly because the
+            # observer function might call removeNotifyObserver, thus modifying
+            # the set while it's being iterated
+            for observer in self.getNotifyObservers():
+                # don't allow exceptions from observers to propagate, as this
+                # method is called from doRead -- exceptions here would lead to
+                # a disconnect
+                try:
+                    observer(notify)
+                except:
+                    log.err()
+
+        # continue watching for NOTIFY events, but be careful to check the
+        # connection state in case one of the notify handler function caused a
+        # disconnection
+        if not self._connection.closed:
+            self.reactor.addReader(self)
+
+    def addNotifyObserver(self, observer):
+        """
+        Add an observer function that will get called whenever a NOTIFY event
+        is delivered to this connection. Any number of observers can be added
+        to a connection. Adding an observer that's already been added is
+        ignored.
+
+        @type observer: Any callable
+        @param observer: A callable whose first argument is a
+            L{psycopg2.extensions.Notify}.
+        """
+        self._notifyObservers.add(observer)
+
+    def removeNotifyObserver(self, observer):
+        """
+        Remove a previously added observer function. Removing an observer
+        that's never been added will be ignored.
+
+        @type observer: Any callable
+        @param observer: A callable that should no longer be called on NOTIFY
+            events.
+        """
+        self._notifyObservers.discard(observer)
+
+    def getNotifyObservers(self):
+        """
+        Get the currently registered notify observers.
+
+        @rtype: C{set}
+        @return: An set of callables that will get called on NOTIFY events.
+        """
+        return set(self._notifyObservers)
 
 
 class ConnectionPool(object):

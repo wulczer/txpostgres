@@ -14,14 +14,10 @@ except ImportError:
 from txpostgres import txpostgres
 
 from twisted.trial import unittest
-from twisted.internet import defer, main, posixbase, reactor
+from twisted.internet import defer, error, main, posixbase, reactor
 from twisted.python import failure
 
-simple_table_schema = """
-CREATE TABLE simple (
-  x integer
-)
-"""
+simple_table_schema = "CREATE TABLE simple (x integer)"
 
 DB_NAME = "twisted_test"
 DB_HOST = "localhost"
@@ -60,6 +56,9 @@ class PollableThing(object):
     """
     A fake thing that provides a psycopg2 pollable interface.
     """
+    closed = 0
+    notifies = []
+
     def __init__(self):
         self.NEXT_STATE = psycopg2.extensions.POLL_READ
 
@@ -182,7 +181,9 @@ class TxPostgresPollingMixinTestCase(Psycopg2TestCase):
         self.assertEquals(p.fileno(), 42)
         self.assertEquals(p.logPrefix(), "fake-wrapper")
 
-        p._pollable = None
+        # check if it will correctly return -1 after the connection got lost,
+        # to work with Twisted affected by bug #4539
+        p._pollable.closed = 1
         self.assertEquals(p.fileno(), -1)
 
     def test_connectionLost(self):
@@ -310,6 +311,7 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         conn = txpostgres.Connection()
 
         class BadPollable(object):
+            closed = 1
 
             def __init__(*args, **kwars):
                 pass
@@ -327,6 +329,7 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         d.addCallback(lambda _: conn.close())
 
         class BadThing(object):
+            closed = 1
 
             def __init__(*args, **kwargs):
                 raise RuntimeError("wooga")
@@ -340,6 +343,7 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         d = self.assertFailure(d, RuntimeError)
 
         class BrokenPollable(object):
+            closed = 1
 
             def __init__(*args, **kwars):
                 pass
@@ -371,16 +375,25 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
 class _SimpleDBSetupMixin(object):
 
     def setUp(self):
-        self.conn = txpostgres.Connection()
-        d = self.conn.connect(user=DB_USER, password=DB_PASS,
-                              host=DB_HOST, database=DB_NAME)
-        d.addCallback(lambda c: c.cursor())
+        d = self.restoreConnection(None)
+        d.addCallback(lambda _: self.conn.cursor())
         return d.addCallback(lambda c: c.execute(simple_table_schema))
 
     def tearDown(self):
         c = self.conn.cursor()
         d = c.execute("drop table simple")
         return d.addCallback(lambda _: self.conn.close())
+
+    def restoreConnection(self, res):
+        """
+        Restore the connection to the database and return whatever argument has
+        been passed through. Useful as an addBoth handler for tests that
+        disconnect from the database.
+        """
+        self.conn = txpostgres.Connection()
+        d = self.conn.connect(user=DB_USER, password=DB_PASS,
+                              host=DB_HOST, database=DB_NAME)
+        return d.addCallback(lambda _: res)
 
 
 class TxPostgresManualQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
@@ -642,20 +655,18 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
                 d = self.conn.runQuery("select 1")
                 return self.assertFailure(d, psycopg2.InterfaceError)
 
-            def restoreConnection(res):
-                self.conn = txpostgres.Connection()
-                d = self.conn.connect(user=DB_USER, password=DB_PASS,
-                                      host=DB_HOST, database=DB_NAME)
-                return d.addCallback(lambda _: res)
-
             d.addCallbacks(fail, checkDatabaseError)
             d.addCallback(runSimpleQuery)
             # restore the connection, otherwise all the other tests will fail
-            return d.addBoth(restoreConnection)
+            return d.addBoth(self.restoreConnection)
 
         return d.addCallback(lambda _: terminateAndRunQuery())
 
     def test_connectionLostWhileRunning(self):
+        """
+        If the connection is lost while a query is still underway, the polling
+        cycle is continued until psycopg2 either reports success or an error.
+        """
         cursors = []
 
         class RetainingCursor(txpostgres.Cursor):
@@ -670,11 +681,36 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d2 = self.conn.runQuery("select 1")
 
         self.assertEquals(len(cursors), 1)
+        # even if the cursor gets connectionLost called on it, it will continue
+        # to poll the connection, which is mandated by the API (the client
+        # can't stop polling the connection until either POLL_OK is returned or
+        # an exception is raised.
         cursors[0].connectionLost(failure.Failure(RuntimeError("boom")))
 
+        # since no error was reported from psycopg2, both Deferreds callback
         d = defer.gatherResults([d1, d2])
         d.addCallback(self.assertEquals, [[(1, )], [(1, )]])
         return d.addCallback(lambda _: mp.restore())
+
+    def test_disconnectWhileRunning(self):
+        """
+        Disconnecting from the server when there is a query underway causes the
+        query to fail with ConnectionDone.
+        """
+        # check if this Twisted has a patch for #4539, otherwise the cursor
+        # will have fileno() called on it after the psycopg2 closes the
+        # connection socket, resulting in an error
+        if not getattr(posixbase, '_PollLikeMixin', None):
+            raise unittest.SkipTest("This test fails on versions of Twisted "
+                                    "affected by Twisted bug #4539")
+
+        d = self.conn.runQuery("select pg_sleep(5)")
+        reactor.callLater(0, self.conn.close)
+
+        # the query fails with a disconnected error
+        d = self.assertFailure(d, error.ConnectionDone)
+        # restore the connection, otherwise all the other tests will fail
+        return d.addBoth(self.restoreConnection)
 
 
 class TxPostgresConnectionPoolTestCase(Psycopg2TestCase):
@@ -792,7 +828,8 @@ class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
 
         d.addCallback(lambda _: defer.gatherResults([
                     pool.runQuery("select 1") for _ in range(3)]))
-        return d.addCallback(self.assertEquals, [[(1, )]] * 3)
+        d.addCallback(self.assertEquals, [[(1, )]] * 3)
+        return d.addCallback(lambda _: pool.close())
 
     def test_removeWhileBusy(self):
         """
@@ -807,7 +844,8 @@ class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
 
         def simple(c):
             self.assertRaises(ValueError, pool.remove, c._connection)
-        return d.addCallback(lambda pool: pool.runInteraction(simple))
+        d.addCallback(lambda pool: pool.runInteraction(simple))
+        return d.addCallback(lambda _: pool.close())
 
 
 class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
@@ -864,3 +902,196 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d2 = self.failUnlessFailure(d2, defer.CancelledError)
 
         return defer.gatherResults([d1, d2])
+
+
+class TxPostgresNotifyObserversTestCase(Psycopg2TestCase):
+
+    def test_sameObserverAddedTwice(self):
+        """
+        Adding the same observer twice results in just one registration.
+        """
+        c = txpostgres.Connection()
+
+        def observer(notify):
+            pass
+
+        self.assertEquals(len(c.getNotifyObservers()), 0)
+
+        c.addNotifyObserver(observer)
+        c.addNotifyObserver(observer)
+
+        self.assertEquals(len(c.getNotifyObservers()), 1)
+
+    def test_removeNonexistentObserver(self):
+        """
+        Removing an observer twice is valid and results in the observer being
+        removed. Removing one that does not exist at all is valid as well.
+        """
+        c = txpostgres.Connection()
+
+        def observer1(notify):
+            pass
+        def observer2(notify):
+            pass
+
+        c.addNotifyObserver(observer1)
+        c.addNotifyObserver(observer2)
+
+        self.assertEquals(len(c.getNotifyObservers()), 2)
+
+        c.removeNotifyObserver(observer1)
+        c.removeNotifyObserver(observer1)
+        c.removeNotifyObserver(lambda _: _)
+
+        self.assertEquals(len(c.getNotifyObservers()), 1)
+        self.assertIn(observer2, c.getNotifyObservers())
+
+
+class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
+
+    def setUp(self):
+        self.notifyconn = txpostgres.Connection()
+        self.notifies = []
+
+        d = self.notifyconn.connect(user=DB_USER, password=DB_PASS,
+                                    host=DB_HOST, database=DB_NAME)
+        return d.addCallback(lambda _: _SimpleDBSetupMixin.setUp(self))
+
+    def tearDown(self):
+        self.notifyconn.close()
+        return _SimpleDBSetupMixin.tearDown(self)
+
+    def sendNotify(self):
+        return self.notifyconn.runOperation('notify txpostgres_test')
+
+    def test_simpleNotify(self):
+        """
+        Notifications sent form another session are delivered to the listening
+        session.
+        """
+        notifyD = defer.Deferred()
+
+        def observer(notify):
+            self.notifies.append(notify)
+            notifyD.callback(None)
+
+        self.conn.addNotifyObserver(observer)
+
+        d = self.conn.runOperation("listen txpostgres_test")
+        d.addCallback(lambda _: self.sendNotify())
+        # wait for the notification to be processed
+        d.addCallback(lambda _: notifyD)
+        d.addCallback(lambda _: self.assertEquals(len(self.notifies), 1))
+        return d.addCallback(lambda _: self.assertEquals(
+                self.notifies[0][1], "txpostgres_test"))
+
+    def test_listenUnlisten(self):
+        """
+        Unlistening causes notifications not to be delivered anymore.
+        """
+        notifyD = defer.Deferred()
+
+        def observer(notify):
+            self.notifies.append(notify)
+            notifyD.callback(None)
+
+        self.conn.addNotifyObserver(observer)
+
+        d = self.conn.runOperation("listen txpostgres_test")
+        d.addCallback(lambda _: self.sendNotify())
+        d.addCallback(lambda _: notifyD)
+        d.addCallback(lambda _: self.assertEquals(len(self.notifies), 1))
+        d.addCallback(lambda _: self.conn.runOperation(
+                "unlisten txpostgres_test"))
+        d.addCallback(lambda _: self.sendNotify())
+        # run a query to force the reactor to spin and flush eventual pending
+        # notifications, which there should be none since we did unlisten
+        d.addCallback(lambda _: self.conn.runOperation("select 1"))
+        return d.addCallback(lambda _: self.assertEquals(
+                len(self.notifies), 1))
+
+    def test_multipleNotifies(self):
+        """
+        Multiple notifications sent in a row are gradually delivered.
+        """
+        dl = [defer.Deferred(), defer.Deferred(), defer.Deferred()]
+        notifyD = defer.DeferredList(dl)
+
+        def observer(notify):
+            self.notifies.append(notify)
+            dl.pop().callback(None)
+
+        self.conn.addNotifyObserver(observer)
+
+        d = self.conn.runOperation("listen txpostgres_test")
+        d.addCallback(lambda _: self.sendNotify())
+        d.addCallback(lambda _: self.sendNotify())
+        d.addCallback(lambda _: self.sendNotify())
+        d.addCallback(lambda _: notifyD)
+        return d.addCallback(lambda _: self.assertEquals(
+                len(self.notifies), 3))
+
+    def test_multipleObservers(self):
+        """
+        Multiple registered notify observers each get notified.
+        """
+        dl1 = [defer.Deferred(), defer.Deferred()]
+        dl2 = [defer.Deferred()]
+
+        firstNotifyD = defer.DeferredList([dl1[1], dl2[0]])
+        secondNotifyD = dl1[0]
+
+        def observer1(notify):
+            self.notifies.append(1)
+            dl1.pop().callback(None)
+
+        def observer2(notify):
+            self.notifies.append(2)
+            dl2.pop().callback(None)
+
+        self.conn.addNotifyObserver(observer1)
+        self.conn.addNotifyObserver(observer2)
+
+        d = self.conn.runOperation("listen txpostgres_test")
+        d.addCallback(lambda _: self.sendNotify())
+        # two observers mean two notifications received
+        d.addCallback(lambda _: firstNotifyD)
+        # the order is not determined though
+        d.addCallback(lambda _: self.assertEquals(
+                set(self.notifies), set([1, 2])))
+        d.addCallback(lambda _: self.conn.removeNotifyObserver(observer2))
+        d.addCallback(lambda _: self.sendNotify())
+        d.addCallback(lambda _: secondNotifyD)
+        # the second observer has been removed, so there should be three
+        # notifies and the last one should come from the first observer
+        d.addCallback(lambda _: self.assertEquals(len(self.notifies), 3))
+        return d.addCallback(lambda _: self.assertEquals(self.notifies[-1], 1))
+
+    def test_errorInObserver(self):
+        """
+        An exception in an observer function gets logged and ignored.
+        """
+        dl = [defer.Deferred(), defer.Deferred()]
+        notifyD = defer.DeferredList(dl)
+
+        def observer1(notify):
+            self.notifies.append(1)
+            dl.pop().callback(None)
+
+        def observer2(notify):
+            raise RuntimeError("boom")
+
+        self.conn.addNotifyObserver(observer1)
+        self.conn.addNotifyObserver(observer2)
+
+        d = self.conn.runOperation("listen txpostgres_test")
+        d.addCallback(lambda _: self.sendNotify())
+        # at some point both observer functions will get called, one of them
+        # raising an exception, to make sure they still are registered and
+        # executing, send another notify
+        d.addCallback(lambda _: self.conn.removeNotifyObserver(observer2))
+        d.addCallback(lambda _: self.sendNotify())
+        d.addCallback(lambda _: notifyD)
+        d.addCallback(lambda _: self.flushLoggedErrors(RuntimeError))
+        return d.addCallback(lambda _: self.assertEquals(
+                self.notifies, [1, 1]))
