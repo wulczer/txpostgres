@@ -30,6 +30,14 @@ class UnexpectedPollResult(Exception):
     """
 
 
+class AlreadyPolling(Exception):
+    """
+    The previous poll cycle has not been finished yet.
+
+    This probably indicates an issue in txpostgres, rather than in user code.
+    """
+
+
 class _CancelInProgress(Exception):
     """
     A query cancellation is in progress.
@@ -75,41 +83,62 @@ class _PollingMixin(object):
         @return: A Deferred that will fire with an instance of this class when
             the pollable reaches the OK state.
         """
-        if not self._pollingD:
-            self._pollingD = defer.Deferred(self._cancel)
-            # transform a psycopg2 QueryCanceledError into CancelledError
-            self._pollingD.addErrback(self._handleCancellation)
-        ret = self._pollingD
+        # this should never be called while the previous Deferred is still
+        # active, as it would clobber its reference
+        if self._pollingD:
+            return defer.fail(AlreadyPolling())
 
-        try:
-            self._pollingState = self.pollable().poll()
-        except:
-            d, self._pollingD = self._pollingD, None
-            d.errback()
-            return ret
+        ret = self._pollingD = defer.Deferred(self._cancel)
+        # transform a psycopg2 QueryCanceledError into CancelledError
+        self._pollingD.addErrback(self._handleCancellation)
 
-        if self._pollingState == psycopg2.extensions.POLL_OK:
-            d, self._pollingD = self._pollingD, None
-            d.callback(self)
-        elif self._pollingState == psycopg2.extensions.POLL_WRITE:
-            self.reactor.addWriter(self)
-        elif self._pollingState == psycopg2.extensions.POLL_READ:
-            self.reactor.addReader(self)
-        else:
-            d, self._pollingD = self._pollingD, None
-            d.errback(UnexpectedPollResult())
+        self.continuePolling()
 
         return ret
+
+    def continuePolling(self):
+        """
+        Move forward in the poll cycle. This will call poll() on the wrapped
+        pollable and either wait for more I/O or callback or errback the
+        C{Deferred} returned earlier if the polling cycle has been completed.
+        """
+        # This might be called without poll() being called earlier, for
+        # instance when a NOTIFY event is received
+        try:
+            state = self.pollable().poll()
+        except:
+            if self._pollingD:
+                d, self._pollingD = self._pollingD, None
+                d.errback()
+            else:
+                # no one to report the error to
+                raise
+        else:
+            if state == psycopg2.extensions.POLL_OK:
+                if self._pollingD:
+                    d, self._pollingD = self._pollingD, None
+                    d.callback(self)
+            elif state == psycopg2.extensions.POLL_WRITE:
+                self.reactor.addWriter(self)
+            elif state == psycopg2.extensions.POLL_READ:
+                self.reactor.addReader(self)
+            else:
+                if self._pollingD:
+                    d, self._pollingD = self._pollingD, None
+                    d.errback(UnexpectedPollResult())
+                else:
+                    # no one to report the error to
+                    raise UnexpectedPollResult()
 
     def doRead(self):
         self.reactor.removeReader(self)
         if not self.pollable().closed:
-            self.poll()
+            self.continuePolling()
 
     def doWrite(self):
         self.reactor.removeWriter(self)
         if not self.pollable().closed:
-            self.poll()
+            self.continuePolling()
 
     def logPrefix(self):
         return self.prefix
@@ -125,10 +154,10 @@ class _PollingMixin(object):
 
     def connectionLost(self, reason):
         # Do not errback self._pollingD here if the connection is still open!
-        # We need to keep on calling poll() until it reports an error, which
-        # will errback self._pollingD with the correct failure. If we errback
-        # here, we won't finish the poll() cycle, which would leave psycopg2 in
-        # a state where it thinks there's still an async query underway.
+        # We need to keep on polling until it reports an error, which will
+        # errback self._pollingD with the correct failure. If we errback here,
+        # we won't finish the polling cycle, which would leave psycopg2 in a
+        # state where it thinks there's still an async query underway.
         #
         # If the connection got lost right after the first poll(), the Deferred
         # returned from it will never fire, leaving the caller hanging forever,
@@ -138,7 +167,7 @@ class _PollingMixin(object):
         # prevent its waiters from hanging (you can't poll() a closed psycopg2
         # connection)
         if not self.pollable().closed:
-            self.poll()
+            self.continuePolling()
         elif self._pollingD:
             d, self._pollingD = self._pollingD, None
             d.errback(reason)

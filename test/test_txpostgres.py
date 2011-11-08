@@ -214,6 +214,38 @@ class TxPostgresPollingMixinTestCase(Psycopg2TestCase):
         return self.assertFailure(d, RuntimeError)
     test_connectionLostWhileWaiting.timeout = 5
 
+    def test_connectionLostWhileReading(self):
+        """
+        If the connection is closed after the polling succeeded and after the
+        socket became readable again, but not all of the data has been read
+        from the socket, the closed flag is set and no errors are reported.
+
+        This might seem elaborated, but a hypothetical error scenario is:
+         * the connection is estabilished and starts watching for socket
+           readability to get NOTIFY events
+         * a NOTIFY comes through and doRead is triggered
+         * not all data is read from the socket and it remains readable
+         * the connection is closed and the Deferred returned from poll()
+           called inside doRead is errbacked without being ever available to user
+           code
+
+        It has been reported that under heavy load this can happen.
+        """
+        p = FakeWrapper()
+        p._pollable = PollableThing()
+
+        # the connection is estabilished
+        p._pollable.NEXT_STATE = psycopg2.extensions.POLL_OK
+        d = p.poll()
+        # doRead is called, but the socket is still readable
+        p._pollable.NEXT_STATE = psycopg2.extensions.POLL_READ
+        p.doRead()
+        # the connection is closed
+        p._pollable.closed = True
+        p.connectionLost(failure.Failure(main.CONNECTION_LOST))
+        # return the connection Deferred
+        return d
+
     def test_errors(self):
         """
         Unexpected results from poll() make L{txpostgres._PollingMixin} raise
