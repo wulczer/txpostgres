@@ -332,7 +332,11 @@ class Connection(_PollingMixin):
         # We'll be closing the underlying socket so stop watching it.
         self.reactor.removeReader(self)
         self.reactor.removeWriter(self)
-        self._connection.close()
+
+        # make it safe to call Connection.close() multiple times, psycopg2
+        # treats this as an error but we don't
+        if not self._connection.closed:
+            self._connection.close()
 
         # The above closed the connection socket from C code. Normally we would
         # get connectionLost called on all readers and writers of that socket,

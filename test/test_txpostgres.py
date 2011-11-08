@@ -371,6 +371,21 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         d.addCallback(lambda _: conn.connect(**connargs))
         return d.addCallback(lambda _: conn.close())
 
+    def test_closeTwice(self):
+        """
+        Calling close() on the connection twice does not result in an error.
+        """
+        conn = txpostgres.Connection()
+        d = conn.connect(user=DB_USER, password=DB_PASS,
+                         host=DB_HOST, database=DB_NAME)
+
+        def closeTwice(_):
+            conn.close()
+            conn.close()
+
+        d.addCallback(closeTwice)
+        return d.addCallback(lambda _: self.assertTrue(conn.closed))
+
 
 class _SimpleDBSetupMixin(object):
 
