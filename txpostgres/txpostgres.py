@@ -67,6 +67,45 @@ class _PollingMixin(object):
         """
         raise NotImplementedError()
 
+    def _poll(self):
+        """
+        Do real psycopg2 poll call.
+
+        @return: C{None} if there's not enough data, C{self} is some data is
+        available for consumption
+        """
+        self._pollingState = self.pollable().poll()
+
+        if self._pollingState == psycopg2.extensions.POLL_OK:
+            return self
+        elif self._pollingState == psycopg2.extensions.POLL_WRITE:
+            self.reactor.addWriter(self)
+            return None
+        elif self._pollingState == psycopg2.extensions.POLL_READ:
+            self.reactor.addReader(self)
+            return None
+        else:
+            raise UnexpectedPollResult()
+
+    def _continue_polling(self):
+        """
+        Continue polling (called when getting back from reactor on event).
+
+        Report success and failures to self._pollingD, if it is available,
+        otherwise log it.
+        """
+        try:
+            res = self._poll()
+            if res and self._pollingD:
+                d, self._pollingD = self._pollingD, None
+                d.callback(res)
+        except:
+            if self._pollingD:
+                d, self._pollingD = self._pollingD, None
+                d.errback()
+            else:
+                log.err()
+
     def poll(self):
         """
         Start polling the wrapped pollable.
@@ -75,39 +114,26 @@ class _PollingMixin(object):
         @return: A Deferred that will fire with an instance of this class when
             the pollable reaches the OK state.
         """
-        if not self._pollingD:
-            self._pollingD = defer.Deferred(self._cancel)
-            # transform a psycopg2 QueryCanceledError into CancelledError
-            self._pollingD.addErrback(self._handleCancellation)
-        ret = self._pollingD
+        # we should have finished polling for the previous result
+        assert not self._pollingD
 
-        try:
-            self._pollingState = self.pollable().poll()
-        except:
-            d, self._pollingD = self._pollingD, None
-            d.errback()
-            return ret
+        d = self._pollingD = defer.Deferred(self._cancel)
+        # transform a psycopg2 QueryCanceledError into CancelledError
+        self._pollingD.addErrback(self._handleCancellation)
 
-        if self._pollingState == psycopg2.extensions.POLL_OK:
-            d, self._pollingD = self._pollingD, None
-            d.callback(self)
-        elif self._pollingState == psycopg2.extensions.POLL_WRITE:
-            self.reactor.addWriter(self)
-        elif self._pollingState == psycopg2.extensions.POLL_READ:
-            self.reactor.addReader(self)
-        else:
-            d, self._pollingD = self._pollingD, None
-            d.errback(UnexpectedPollResult())
+        self._continue_polling()
 
-        return ret
+        return d
 
     def doRead(self):
         self.reactor.removeReader(self)
-        self.poll()
+        if self.pollable() and not self.pollable().closed:
+            self._continue_polling()
 
     def doWrite(self):
         self.reactor.removeWriter(self)
-        self.poll()
+        if self.pollable() and not self.pollable().closed:
+            self._continue_polling()
 
     def logPrefix(self):
         return self.prefix
@@ -136,7 +162,7 @@ class _PollingMixin(object):
         # prevent its waiters from hanging (you can't poll() a closed psycopg2
         # connection)
         if not self.pollable().closed:
-            self.poll()
+            self._continue_polling()
         elif self._pollingD:
             d, self._pollingD = self._pollingD, None
             d.errback(reason)
@@ -330,7 +356,8 @@ class Connection(_PollingMixin):
         # We'll be closing the underlying socket so stop watching it.
         self.reactor.removeReader(self)
         self.reactor.removeWriter(self)
-        self._connection.close()
+        if not self._connection.closed:
+            self._connection.close()
 
         # The above closed the connection socket from C code. Normally we would
         # get connectionLost called on all readers and writers of that socket,
