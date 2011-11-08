@@ -103,11 +103,13 @@ class _PollingMixin(object):
 
     def doRead(self):
         self.reactor.removeReader(self)
-        self.poll()
+        if not self.pollable().closed:
+            self.poll()
 
     def doWrite(self):
         self.reactor.removeWriter(self)
-        self.poll()
+        if not self.pollable().closed:
+            self.poll()
 
     def logPrefix(self):
         return self.prefix
