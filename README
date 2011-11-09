@@ -16,9 +16,10 @@ $ trial test
 $ sudo python setup.py install
 
 After that you can use txpostgres as a drop-in replacement for
-twisted.enterprise.adbapi. The only difference is with connection pooling,
-which is handled slightly different. Read the docstrings for the ConnectionPool
-class for more details.
+twisted.enterprise.adbapi. The only difference is with connection
+pooling, which is handled slightly different and with connection
+estabilishing, which is asynchronous. Read the docstrings for the
+Connection and ConnectionPool classes for more details.
 
 The library is distributed under the MIT License. You can contact the author,
 Jan Urbanski, at wulczer@wulczer.org.
