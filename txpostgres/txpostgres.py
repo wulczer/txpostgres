@@ -550,6 +550,9 @@ class Connection(_PollingMixin):
         # a reader to a closed connection would be an error.
         if not self._connection.closed:
             self.reactor.addReader(self)
+            # While cursor was running, some notifies could have been
+            # delivered, so check for them.
+            self.doRead()
 
     def doRead(self):
         # call superclass to handle the pending read event on the socket

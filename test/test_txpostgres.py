@@ -1032,6 +1032,26 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         return d.addCallback(lambda _: self.assertEquals(
                 self.notifies[0][1], "txpostgres_test"))
 
+    def test_simpleNotifySameConnection(self):
+        """
+        Notifications sent from the listening session are delivered to the session.
+        """
+        notifyD = defer.Deferred()
+
+        def observer(notify):
+            self.notifies.append(notify)
+            notifyD.callback(None)
+
+        self.notifyconn.addNotifyObserver(observer)
+
+        d = self.notifyconn.runOperation("listen txpostgres_test")
+        d.addCallback(lambda _: self.sendNotify())
+        # wait for the notification to be processed
+        d.addCallback(lambda _: notifyD)
+        d.addCallback(lambda _: self.assertEquals(len(self.notifies), 1))
+        return d.addCallback(lambda _: self.assertEquals(
+                self.notifies[0][1], "txpostgres_test"))
+
     def test_listenUnlisten(self):
         """
         Unlistening causes notifications not to be delivered anymore.
