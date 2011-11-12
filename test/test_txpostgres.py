@@ -105,6 +105,9 @@ class FakeReactor(object):
     def removeWriter(self, _):
         self.writersRemoved += 1
 
+    def callLater(self, delay, callable, *args, **kwargs):
+        callable(*args, **kwargs)
+
 
 class FakeWrapper(txpostgres._PollingMixin):
     """
@@ -342,6 +345,9 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
         """
         conn = txpostgres.Connection()
 
+        def setFactory(conn, factory):
+            conn.connectionFactory = factory
+
         class BadPollable(object):
             closed = 1
 
@@ -354,7 +360,7 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
             def close(self):
                 pass
 
-        conn.connectionFactory = BadPollable
+        setFactory(conn, BadPollable)
 
         d = conn.connect()
         d = self.assertFailure(d, RuntimeError)
@@ -369,7 +375,7 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
             def close(self):
                 pass
 
-        conn.connectionFactory = BadThing
+        d.addCallback(lambda _: setFactory(conn, BadThing))
 
         d.addCallback(lambda _: conn.connect())
         d = self.assertFailure(d, RuntimeError)
@@ -386,7 +392,7 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
             def close(self):
                 pass
 
-        conn.connectionFactory = BrokenPollable
+        d.addCallback(lambda _: setFactory(conn, BrokenPollable))
 
         d.addCallback(lambda _: conn.connect())
         return self.assertFailure(d, txpostgres.UnexpectedPollResult)
@@ -417,6 +423,33 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
 
         d.addCallback(closeTwice)
         return d.addCallback(lambda _: self.assertTrue(conn.closed))
+
+    def test_connectionRemovingReader(self):
+        """
+        The connection is not reading from the socket while a cursor is
+        running.
+        """
+        class ExclusiveCursor(txpostgres.Cursor):
+            testcase = self
+
+            def doRead(self):
+                for reader in self.reactor.getReaders():
+                    if isinstance(reader, txpostgres.Connection):
+                        self.testcase.fail(
+                            "doRead called on Cursor "
+                            "while a Connection is among readers: %r" %
+                            self.reactor.getReaders())
+
+                return txpostgres.Cursor.doRead(self)
+
+        conn = txpostgres.Connection()
+        conn.cursorFactory = ExclusiveCursor
+        d = conn.connect(user=DB_USER, password=DB_PASS,
+                         host=DB_HOST, database=DB_NAME)
+        # use something more complex than select 1 or otherwise the query might
+        # complete in a single reactor cycle
+        d.addCallback(lambda _: conn.cursor().execute("select pg_sleep(0.1)"))
+        return d.addCallback(lambda _: conn.close())
 
 
 class _SimpleDBSetupMixin(object):
