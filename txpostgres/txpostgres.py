@@ -550,12 +550,29 @@ class Connection(_PollingMixin):
         # a reader to a closed connection would be an error.
         if not self._connection.closed:
             self.reactor.addReader(self)
+            # While cursor was running, some notifies could have been
+            # delivered, so check for them.
+            self.checkForNotifies()
 
     def doRead(self):
         # call superclass to handle the pending read event on the socket
         _PollingMixin.doRead(self)
 
         # check for NOTIFY events
+        self.checkForNotifies()
+
+        # continue watching for NOTIFY events, but be careful to check the
+        # connection state in case one of the notify handler function caused a
+        # disconnection
+        if not self._connection.closed:
+            self.reactor.addReader(self)
+
+    def checkForNotifies(self):
+        """
+        Check if NOTIFY events have been received and if so, dispatch them to
+        the registered observers. This is done automatically, user code should
+        never need to call this method.
+        """
         while self._connection.notifies:
             notify = self._connection.notifies.pop()
             # don't iterate over self._notifyObservers directly because the
@@ -569,12 +586,6 @@ class Connection(_PollingMixin):
                     observer(notify)
                 except:
                     log.err()
-
-        # continue watching for NOTIFY events, but be careful to check the
-        # connection state in case one of the notify handler function caused a
-        # disconnection
-        if not self._connection.closed:
-            self.reactor.addReader(self)
 
     def addNotifyObserver(self, observer):
         """
