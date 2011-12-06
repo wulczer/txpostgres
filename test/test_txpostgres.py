@@ -863,6 +863,36 @@ class TxPostgresConnectionPoolTestCase(Psycopg2TestCase):
                                     for _ in range(self.pool.min * 20)])
 
 
+class TxPostgresConnectionPoolErrorsTestCase(Psycopg2TestCase):
+
+    def test_errorsInConnections(self):
+        """
+        A failure in any connection makes the Deferred returned from start()
+        fail.
+        """
+        class ErrorConnection(object):
+            connid = 0
+
+            def __init__(self, reactor):
+                self.reactor = reactor
+
+            def connect(self, *args, **kwargs):
+                # the third connection fails
+                ErrorConnection.connid += 1
+                if ErrorConnection.connid == 3:
+                    return defer.fail(RuntimeError("boom"))
+                return defer.succeed(None)
+
+        class ErrorConnectionPool(txpostgres.ConnectionPool):
+            connectionFactory = ErrorConnection
+
+        pool = ErrorConnectionPool(None, min=3)
+        d = pool.start()
+
+        d = self.assertFailure(d, defer.FirstError)
+        return d.addCallback(lambda exc: exc.subFailure.trap(RuntimeError))
+
+
 class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
 
     def test_errorsInInteractionHotswappingConnections(self):

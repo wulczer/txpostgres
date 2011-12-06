@@ -677,8 +677,11 @@ class ConnectionPool(object):
         @rtype: C{Deferred}
         @return: A C{Deferred} that fires when all connection have succeeded.
         """
-        d = defer.gatherResults([c.connect(*self.connargs, **self.connkw)
-                                 for c in self.connections])
+        # use DeferredList here, as gatherResults only got a consumeErrors
+        # keyword argument in Twisted 11.1.0
+        d = defer.DeferredList([c.connect(*self.connargs, **self.connkw)
+                                 for c in self.connections],
+                               fireOnOneErrback=True, consumeErrors=True)
         return d.addCallback(lambda _: self)
 
     def close(self):
