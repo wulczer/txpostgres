@@ -311,10 +311,10 @@ class Connection(_PollingMixin):
     @ivar cursorFactory: The factory used to produce cursors.
     """
 
-    connectionFactory = psycopg2.connect
-    cursorFactory = Cursor
-
     def __init__(self, reactor=None):
+        self.connectionFactory = psycopg2.connect
+        self.cursorFactory = Cursor
+
         if not reactor:
             from twisted.internet import reactor
         self.reactor = reactor
