@@ -311,7 +311,7 @@ class Connection(_PollingMixin):
     @ivar cursorFactory: The factory used to produce cursors.
     """
 
-    connectionFactory = psycopg2.connect
+    connectionFactory = staticmethod(psycopg2.connect)
     cursorFactory = Cursor
 
     def __init__(self, reactor=None):
