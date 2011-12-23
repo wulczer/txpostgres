@@ -962,11 +962,14 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
 
     def setUp(self):
         # check for cancellation support in psycopg2, skip if not present
-        if not getattr(psycopg2._psycopg.connection, "cancel", None):
-            raise unittest.SkipTest(
-                "psycopg2 does not have query cancellation support. "
-                "You need at least version 2.3.0 of psycopg2 "
-                "to use query cancellation.")
+        try:
+            import psycopg2ct
+        except ImportError:
+            if not getattr(psycopg2._psycopg.connection, "cancel", None):
+                raise unittest.SkipTest(
+                    "psycopg2 does not have query cancellation support. "
+                    "You need at least version 2.3.0 of psycopg2 "
+                    "to use query cancellation.")
 
         return _SimpleDBSetupMixin.setUp(self)
 
