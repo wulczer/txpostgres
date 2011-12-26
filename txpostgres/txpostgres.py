@@ -7,7 +7,11 @@ A Twisted wrapper for the asynchronous features of the PostgreSQL psycopg2
 driver.
 """
 
-import psycopg2
+try:
+    import psycopg2
+except ImportError:
+    import psycopg2ct as psycopg2
+
 from zope.interface import implements
 
 from twisted.internet import interfaces, main, defer
@@ -311,7 +315,7 @@ class Connection(_PollingMixin):
     @ivar cursorFactory: The factory used to produce cursors.
     """
 
-    connectionFactory = psycopg2.connect
+    connectionFactory = staticmethod(psycopg2.connect)
     cursorFactory = Cursor
 
     def __init__(self, reactor=None):
@@ -553,6 +557,10 @@ class Connection(_PollingMixin):
         # events. Be careful to check the connection state, because it might
         # have been closed while the cursor was polling and adding ourselves as
         # a reader to a closed connection would be an error.
+
+        if not self._connection.closed and self._connection.fileno() < 0:
+            self._connection.close()
+
         if not self._connection.closed:
             self.reactor.addReader(self)
             # While cursor was running, some notifies could have been
