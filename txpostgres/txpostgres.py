@@ -553,6 +553,10 @@ class Connection(_PollingMixin):
         # events. Be careful to check the connection state, because it might
         # have been closed while the cursor was polling and adding ourselves as
         # a reader to a closed connection would be an error.
+
+        if not self._connection.closed and self._connection.fileno() < 0:
+            self._connection.close()
+
         if not self._connection.closed:
             self.reactor.addReader(self)
             # While cursor was running, some notifies could have been
