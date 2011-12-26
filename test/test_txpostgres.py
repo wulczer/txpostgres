@@ -9,7 +9,10 @@ try:
     import psycopg2
     import psycopg2.extensions
 except ImportError:
-    psycopg2 = None
+    try:
+        import psycopg2ct as psycopg2
+    except ImportError:
+        psycopg2 = None
 
 from txpostgres import txpostgres
 

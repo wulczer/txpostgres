@@ -7,7 +7,11 @@ A Twisted wrapper for the asynchronous features of the PostgreSQL psycopg2
 driver.
 """
 
-import psycopg2
+try:
+    import psycopg2
+except ImportError:
+    import psycopg2ct as psycopg2
+
 from zope.interface import implements
 
 from twisted.internet import interfaces, main, defer
