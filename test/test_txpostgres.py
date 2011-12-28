@@ -706,6 +706,12 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
             raise unittest.SkipTest("This test fails on versions of Twisted "
                                     "affected by Twisted bug #4539")
 
+        # skip this test if running with psycopg2ct, which does not detect that
+        # the connection has been closed until it's too late and instead of a
+        # DatabaseError gets an error because the file descriptor is -1
+        if getattr(psycopg2, '_impl', None):
+            raise unittest.SkipTest("This test fails with psycopg2ct")
+
         def checkSuperuser(ret):
             if ret[0][0] != 'on':
                 raise unittest.SkipTest(
