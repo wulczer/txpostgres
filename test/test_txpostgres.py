@@ -964,14 +964,16 @@ class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
 class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
 
     def setUp(self):
-        # check for cancellation support in psycopg2, skip if not present
-        if not getattr(psycopg2._psycopg.connection, "cancel", None):
-            raise unittest.SkipTest(
-                "psycopg2 does not have query cancellation support. "
-                "You need at least version 2.3.0 of psycopg2 "
-                "to use query cancellation.")
+        def checkCancellationSupport():
+            # check for cancellation support in psycopg2, skip if not present
+            if not getattr(self.conn.pollable(), "cancel", None):
+                raise unittest.SkipTest(
+                    "psycopg2 does not have query cancellation support. "
+                    "You need at least version 2.3.0 of psycopg2 "
+                    "to use query cancellation.")
 
-        return _SimpleDBSetupMixin.setUp(self)
+        d = _SimpleDBSetupMixin.setUp(self)
+        return d.addCallback(lambda _: checkCancellationSupport())
 
     def test_simpleCancellation(self):
         d = self.conn.runQuery("select pg_sleep(5)")
