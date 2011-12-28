@@ -9,12 +9,9 @@ try:
     import psycopg2
     import psycopg2.extensions
 except ImportError:
-    try:
-        from psycopg2ct import compat
-        compat.register()
-        import psycopg2
-    except ImportError:
-        psycopg2 = None
+    from psycopg2ct import compat
+    compat.register()
+    import psycopg2
 
 from txpostgres import txpostgres
 
@@ -31,8 +28,6 @@ DB_PASS = "twisted_test"
 
 
 def getSkipForPsycopg2():
-    if not psycopg2:
-        return "psycopg2 not installed"
     try:
         psycopg2.extensions.POLL_OK
     except AttributeError:
