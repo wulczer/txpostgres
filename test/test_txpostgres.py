@@ -10,7 +10,9 @@ try:
     import psycopg2.extensions
 except ImportError:
     try:
-        import psycopg2ct as psycopg2
+        from psycopg2ct import compat
+        compat.register()
+        import psycopg2
     except ImportError:
         psycopg2 = None
 

@@ -10,7 +10,9 @@ driver.
 try:
     import psycopg2
 except ImportError:
-    import psycopg2ct as psycopg2
+    from psycopg2ct import compat
+    compat.register()
+    import psycopg2
 
 from zope.interface import implements
 
