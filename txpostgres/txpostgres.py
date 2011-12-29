@@ -101,11 +101,16 @@ class _PollingMixin(object):
 
         return ret
 
-    def continuePolling(self):
+    def continuePolling(self, swallowErrors=False):
         """
         Move forward in the poll cycle. This will call poll() on the wrapped
         pollable and either wait for more I/O or callback or errback the
-        C{Deferred} returned earlier if the polling cycle has been completed.
+        C{Deferred} returned earlier if the polling cycle has been
+        completed.
+
+        @type swallowErrors: C{bool}
+        @param swallowErrors: Should errors with no one to report them to be
+            ignored.
         """
         # This method often gets called from the reactor's doRead/doWrite
         # handlers. Don't callback or errback the polling Deferred here, as
@@ -120,7 +125,7 @@ class _PollingMixin(object):
             if self._pollingD:
                 d, self._pollingD = self._pollingD, None
                 self.reactor.callLater(0, d.errback, failure.Failure())
-            else:
+            elif not swallowErrors:
                 # no one to report the error to
                 raise
         else:
@@ -136,7 +141,7 @@ class _PollingMixin(object):
                 if self._pollingD:
                     d, self._pollingD = self._pollingD, None
                     self.reactor.callLater(0, d.errback, UnexpectedPollResult())
-                else:
+                elif not swallowErrors:
                     # no one to report the error to
                     raise UnexpectedPollResult()
 
@@ -177,7 +182,9 @@ class _PollingMixin(object):
         # prevent its waiters from hanging (you can't poll() a closed psycopg2
         # connection)
         if not self.pollable().closed:
-            self.continuePolling()
+            # we're pushing the polling cycle to report pending failures, so if
+            # there's no one to report them to, swallow them
+            self.continuePolling(swallowErrors=True)
         elif self._pollingD:
             d, self._pollingD = self._pollingD, None
             d.errback(reason)
