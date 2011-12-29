@@ -1,0 +1,20 @@
+What's new in txpostgres 1.0.0
+------------------------------
+
+  - support for NOTIFY callbacks via 'addNotifyObserver()'
+
+  - many robustness fixes making txpostgres more stable under heavy
+    loads (thanks to Andrey Sirnov and Tobias Oberstein for bug
+    reports and patches)
+
+  - comatibility with psycopg2 > 2.4.2 (thanks to Erik Allik and
+    Vasily Evseenko)
+
+  - txpostgres now falls back to psycopg2-ctypes if psycopg2 is not
+    found (thanks to Vasily Evseenko)
+
+  - fix problem with Twisted < 11.1.0 and the Gtk2 reactor (thanks to
+    Marek Kowalski)
+
+  - fixes for log spew when handling severed connections, txpostgres
+    now tries to report exactly one error in such events
