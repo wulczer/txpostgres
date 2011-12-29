@@ -197,6 +197,14 @@ class _PollingMixin(object):
         f.trap(psycopg2.extensions.QueryCanceledError)
         return failure.Failure(defer.CancelledError())
 
+    # Hack required to work with the Gtk2 reactor in Twisted <=11.0, which
+    # tries to access the "disconnected" property on the IReadWriteDescriptor
+    # it polls. To avoid attribute errors, forward that access to the "closed"
+    # property of the underlying connection.
+    def disconnected(self):
+        return self.pollable().closed
+    disconnected = property(disconnected)
+
     # forward all other access to the underlying connection
     def __getattr__(self, name):
         return getattr(self.pollable(), name)
