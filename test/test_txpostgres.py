@@ -9,9 +9,8 @@ try:
     import psycopg2
     import psycopg2.extensions
 except ImportError:
-    from psycopg2ct import compat
-    compat.register()
-    import psycopg2
+    # try psycopg2-ctypes
+    import psycopg2ct as psycopg2
 
 from txpostgres import txpostgres
 
