@@ -702,11 +702,14 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
             raise unittest.SkipTest("This test fails on versions of Twisted "
                                     "affected by Twisted bug #4539")
 
-        # skip this test if running with psycopg2ct, which does not detect that
-        # the connection has been closed until it's too late and instead of a
-        # DatabaseError gets an error because the file descriptor is -1
-        if getattr(psycopg2, '_impl', None):
-            raise unittest.SkipTest("This test fails with psycopg2ct")
+        # Check if we're running under psycopg2ct from before the patch that
+        # added correct terminated connection handling. Then only way to know
+        # that seems to be looking at the __version__ string.
+        if (getattr(psycopg2, '_impl', None) and
+            'ctypes' not in psycopg2.__version__):
+            raise unittest.SkipTest(
+                "This test fails on versions of psycopg2ct 0.3 and older, "
+                "which have a bug in terminated connection handling")
 
         def checkSuperuser(ret):
             if ret[0][0] != 'on':
