@@ -21,5 +21,7 @@ pooling, which is handled slightly different and with connection
 estabilishing, which is asynchronous. Read the docstrings for the
 Connection and ConnectionPool classes for more details.
 
-The library is distributed under the MIT License. You can contact the author,
-Jan Urbanski, at wulczer@wulczer.org.
+The library is distributed under the MIT License. You can contact the
+author, Jan Urbanski, at wulczer@wulczer.org. You can find the source
+and an issue tracker at https://github.com/wulczer/txpostgres and the
+documentation at http://wulczer.github.com/txpostgres/.

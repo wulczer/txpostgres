@@ -24,7 +24,9 @@ The main advantage of txpostgres over Twisted's built-in database support is
 non-blocking connection building and complete lack of thread usage.
 
 txpostgres is distributed under the MIT License, see the LICENSE file for
-details.
+details. You can find the source and an issue tracker at
+https://github.com/wulczer/txpostgres and the documentation at
+http://wulczer.github.com/txpostgres/.
 
 .. _PostgreSQL: http://www.postgresql.org/
 .. _Twisted: http://twistedmatrix.com/
