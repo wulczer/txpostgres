@@ -1,0 +1,699 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>API documentation &mdash; txpostgres 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="txpostgres 1.0.0 documentation" href="index.html" />
+    <link rel="prev" title="Module usage" href="usage.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="usage.html" title="Module usage"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">txpostgres 1.0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="api-documentation">
+<h1>API documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="txpostgres.Connection">
+<em class="property">class </em><tt class="descclassname">txpostgres.</tt><tt class="descname">Connection</tt><big>(</big><em>reactor=None</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpostgres._PollingMixin" title="txpostgres._PollingMixin"><tt class="xref py py-class docutils literal"><span class="pre">txpostgres._PollingMixin</span></tt></a></p>
+<p>A wrapper for a psycopg2 asynchronous connection.</p>
+<p>The wrapper forwards almost everything to the wrapped connection, but
+provides additional methods for compatibility with <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.enterprise.adbapi.Connection.html">adbapi.Connection</a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>reactor</strong> &#8211; A Twisted reactor or <tt class="xref py py-class docutils literal"><span class="pre">None</span></tt>, which means the current
+reactor</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>connectionFactory</strong> (<em>any callable</em>) &#8211; The factory used to produce connections, defaults
+to <a class="reference external" href="http://initd.org/psycopg/docs/module.html#psycopg2.connect">psycopg2.connect</a></li>
+<li><strong>cursorFactory</strong> (a callable accepting two positional arguments, a
+<a class="reference external" href="http://initd.org/psycopg/docs/cursor.html#cursor">psycopg2.cursor</a> and a
+<a class="reference internal" href="#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a>) &#8211; The factory used to produce cursors, defaults to
+<a class="reference internal" href="#txpostgres.Cursor" title="txpostgres.Cursor"><tt class="xref py py-class docutils literal"><span class="pre">Cursor</span></tt></a></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="txpostgres.Connection.connect">
+<tt class="descname">connect</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.connect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connect to the database.</p>
+<p>Any arguments will be passed to <tt class="xref py py-attr docutils literal"><span class="pre">connectionFactory</span></tt>. Use them to
+pass database names, usernames, passwords, etc.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> that will fire when the connection is open.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raise :</th><td class="field-body"><a class="reference internal" href="#txpostgres.AlreadyConnected" title="txpostgres.AlreadyConnected"><tt class="xref py py-exc docutils literal"><span class="pre">AlreadyConnected</span></tt></a> when the connection has
+already been opened.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the connection and disconnect from the database.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><tt class="xref py py-class docutils literal"><span class="pre">None</span></tt></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.cursor">
+<tt class="descname">cursor</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.cursor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.cursor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an asynchronous cursor using <tt class="xref py py-attr docutils literal"><span class="pre">cursorFactory</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.runQuery">
+<tt class="descname">runQuery</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.runQuery"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.runQuery" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute an SQL query and return the result.</p>
+<p>An asynchronous cursor will be created and its
+<a class="reference internal" href="#txpostgres.Cursor.execute" title="txpostgres.Cursor.execute"><tt class="xref py py-meth docutils literal"><span class="pre">execute()</span></tt></a> method will be invoked with the
+provided arguments. After the query completes the results will be
+fetched and the returned <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> will fire with the result.</p>
+<p>The connection is always in autocommit mode, so the query will be run
+in a one-off transaction. In case of errors a <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.python.failure.Failure.html">Failure</a> will be returned.</p>
+<p>It is safe to call this method multiple times without waiting for the
+first query to complete.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> that will fire with the return value of the
+cursor&#8217;s <tt class="xref py py-meth docutils literal"><span class="pre">fetchall()</span></tt> method.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.runOperation">
+<tt class="descname">runOperation</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.runOperation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.runOperation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute an SQL query and discard the result.</p>
+<p>Identical to <a class="reference internal" href="#txpostgres.Connection.runQuery" title="txpostgres.Connection.runQuery"><tt class="xref py py-meth docutils literal"><span class="pre">runQuery()</span></tt></a>, but the result
+won&#8217;t be fetched and instead <tt class="xref py py-class docutils literal"><span class="pre">None</span></tt> will be returned. It is
+intended for statements that do not normally return values, like INSERT
+or DELETE.</p>
+<p>It is safe to call this method multiple times without waiting for the
+first query to complete.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> that will fire <tt class="xref py py-class docutils literal"><span class="pre">None</span></tt>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.runInteraction">
+<tt class="descname">runInteraction</tt><big>(</big><em>interaction</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.runInteraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.runInteraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run commands in a transaction and return the result.</p>
+<p><tt class="xref py py-obj docutils literal"><span class="pre">interaction</span></tt> should be a callable that will be passed a
+<a class="reference internal" href="#txpostgres.Cursor" title="txpostgres.Cursor"><tt class="xref py py-class docutils literal"><span class="pre">Cursor</span></tt></a> object. Before calling <tt class="xref py py-obj docutils literal"><span class="pre">interaction</span></tt> a
+new transaction will be started, so the callable can assume to be
+running all its commands in a transaction. If <tt class="xref py py-obj docutils literal"><span class="pre">interaction</span></tt>
+returns a <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> processing will wait for it to fire before
+proceeding.</p>
+<p>After <tt class="xref py py-obj docutils literal"><span class="pre">interaction</span></tt> finishes work the transaction will be
+automatically committed. If it raises an exception or returns a
+<a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.python.failure.Failure.html">Failure</a> the connection will be rolled
+back instead.</p>
+<p>If committing the transaction fails it will be rolled back instead and
+the failure obtained trying to commit will be returned.</p>
+<p>If rolling back the transaction fails the failure obtained from the
+rollback attempt will be logged and a <a class="reference internal" href="#txpostgres.RollbackFailed" title="txpostgres.RollbackFailed"><tt class="xref py py-exc docutils literal"><span class="pre">RollbackFailed</span></tt></a>
+failure will be returned. The returned failure will contain references
+to the original failure that caused the transaction to be rolled back
+and to the <a class="reference internal" href="#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a> in which that happend, so
+the user can take a decision whether she still wants to be using it or
+just close it, because an open transaction might have been left open in
+the database.</p>
+<p>It is safe to call this method multiple times without waiting for the
+first query to complete.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>interaction</strong> (<em>any callable</em>) &#8211; A callable whose first argument is a
+<a class="reference internal" href="#txpostgres.Cursor" title="txpostgres.Cursor"><tt class="xref py py-class docutils literal"><span class="pre">Cursor</span></tt></a>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> that will fire with the return value of
+<tt class="xref py py-obj docutils literal"><span class="pre">interaction</span></tt>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.cancel">
+<tt class="descname">cancel</tt><big>(</big><em>d</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.cancel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.cancel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cancel the current operation. The cancellation does not happen
+immediately, because the PostgreSQL protocol requires that the
+application waits for confirmation after the query has been cancelled.
+Be carefil when cancelling an interaction, because if the interaction
+includes sending multiple queries to the database server, you can&#8217;t
+really be sure which one are you cancelling.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>d</strong> &#8211; a <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> returned by one of
+<a class="reference internal" href="#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a> methods.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.cursorRunning">
+<tt class="descname">cursorRunning</tt><big>(</big><em>cursor</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.cursorRunning"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.cursorRunning" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called automatically when a <a class="reference internal" href="#txpostgres.Cursor" title="txpostgres.Cursor"><tt class="xref py py-class docutils literal"><span class="pre">Cursor</span></tt></a> created by this
+<a class="reference internal" href="#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a> starts polling after executing a query. User
+code should never have to call this method.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.cursorFinished">
+<tt class="descname">cursorFinished</tt><big>(</big><em>cursor</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.cursorFinished"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.cursorFinished" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called automatically when a <a class="reference internal" href="#txpostgres.Cursor" title="txpostgres.Cursor"><tt class="xref py py-class docutils literal"><span class="pre">Cursor</span></tt></a> created by this
+<a class="reference internal" href="#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a> is done with polling after executing a
+query. User code should never have to call this method.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.checkForNotifies">
+<tt class="descname">checkForNotifies</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.checkForNotifies"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.checkForNotifies" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if <a class="reference external" href="http://www.postgresql.org/docs/current/static/sql-notify.html">NOTIFY</a> events have been received and if so,
+dispatch them to the registered observers. This is done automatically,
+user code should never need to call this method.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.addNotifyObserver">
+<tt class="descname">addNotifyObserver</tt><big>(</big><em>observer</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.addNotifyObserver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.addNotifyObserver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an observer function that will get called whenever a <a class="reference external" href="http://www.postgresql.org/docs/current/static/sql-notify.html">NOTIFY</a> event is delivered to this connection. Any number of
+observers can be added to a connection. Adding an observer that&#8217;s
+already been added is ignored.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>observer</strong> (<em>any callable</em>) &#8211; A callable whose first argument is a
+<a class="reference external" href="http://initd.org/psycopg/docs/extensions.html#psycopg2.extensions.Notify">psycopg2.extensions.Notify</a>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.removeNotifyObserver">
+<tt class="descname">removeNotifyObserver</tt><big>(</big><em>observer</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.removeNotifyObserver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.removeNotifyObserver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a previously added observer function. Removing an observer
+that&#8217;s never been added will be ignored.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>observer</strong> (<em>any callable</em>) &#8211; A callable that should no longer be called on
+<a class="reference external" href="http://www.postgresql.org/docs/current/static/sql-notify.html">NOTIFY</a> events.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Connection.getNotifyObservers">
+<tt class="descname">getNotifyObservers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Connection.getNotifyObservers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Connection.getNotifyObservers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the currently registered notify observers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A set of callables that will get called on <a class="reference external" href="http://www.postgresql.org/docs/current/static/sql-notify.html">NOTIFY</a> events.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><tt class="xref py py-class docutils literal"><span class="pre">set</span></tt></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="txpostgres.Cursor">
+<em class="property">class </em><tt class="descclassname">txpostgres.</tt><tt class="descname">Cursor</tt><big>(</big><em>cursor</em>, <em>connection</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Cursor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Cursor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#txpostgres._PollingMixin" title="txpostgres._PollingMixin"><tt class="xref py py-class docutils literal"><span class="pre">txpostgres._PollingMixin</span></tt></a></p>
+<p>A wrapper for a psycopg2 asynchronous cursor.</p>
+<p>The wrapper will forward almost everything to the wrapped cursor, so the
+usual DB-API interface can be used, but it will return <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a>
+objects that will fire with the DB-API results.</p>
+<p>Remember that the PostgreSQL protocol does not support concurrent
+asynchronous queries execution, so you need to take care not to execute a
+query while another is still being processed.</p>
+<p>In most cases you should just use the <a class="reference internal" href="#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a>
+methods that will handle the locking necessary to prevent concurrent query
+execution.</p>
+<dl class="method">
+<dt id="txpostgres.Cursor.execute">
+<tt class="descname">execute</tt><big>(</big><em>query</em>, <em>params=None</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Cursor.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Cursor.execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>A regular DB-API execute, but returns a <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a>.</p>
+<p>The caller must be careful not to call this method twice on cursors
+from the same connection without waiting for the previous execution to
+complete.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> that will fire with the results of the
+DB-API execute.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Cursor.callproc">
+<tt class="descname">callproc</tt><big>(</big><em>procname</em>, <em>params=None</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Cursor.callproc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Cursor.callproc" title="Permalink to this definition">¶</a></dt>
+<dd><p>A regular DB-API callproc, but returns a <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a>.</p>
+<p>The caller must be careful not to call this method twice on cursors
+from the same connection without waiting for the previous execution to
+complete.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> that will fire with the results of the
+DB-API callproc.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.Cursor.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/txpostgres.html#Cursor.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.Cursor.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the cursor.</p>
+<p>Once closed, the cursor cannot be used again.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><tt class="xref py py-class docutils literal"><span class="pre">None</span></tt></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="txpostgres.ConnectionPool">
+<em class="property">class </em><tt class="descclassname">txpostgres.</tt><tt class="descname">ConnectionPool</tt><big>(</big><em>_ignored</em>, <em>*connargs</em>, <em>**connkw</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#ConnectionPool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.ConnectionPool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>A poor man&#8217;s pool of <a class="reference internal" href="#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a> instances.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>min</strong> (<em>int</em>) &#8211; The amount of connections that will be open when
+<a class="reference internal" href="#txpostgres.ConnectionPool.start" title="txpostgres.ConnectionPool.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> is called. The pool never opens or closes connections on
+its own after starting. Defaults to 3.</li>
+<li><strong>connectionFactory</strong> (<em>any callable</em>) &#8211; The factory used to produce connections, defaults
+to <a class="reference internal" href="#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a>.</li>
+<li><strong>reactor</strong> &#8211; The reactor passed to <tt class="xref py py-attr docutils literal"><span class="pre">connectionFactory</span></tt>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="txpostgres.ConnectionPool.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>_ignored</em>, <em>*connargs</em>, <em>**connkw</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#ConnectionPool.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.ConnectionPool.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new connection pool.</p>
+<p>Any positional or keyword arguments other than the first one and a
+<tt class="xref py py-obj docutils literal"><span class="pre">min</span></tt> keyword argument are passed to <tt class="xref py py-attr docutils literal"><span class="pre">connectionFactory</span></tt>
+when connecting. Use these arguments to pass database names, usernames,
+passwords, etc.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>_ignored</strong> (<em>any object</em>) &#8211; Ignored, for <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.enterprise.adbapi.ConnectionPool.html">adbapi.ConnectionPool</a> compatibility.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.ConnectionPool.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/txpostgres.html#ConnectionPool.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.ConnectionPool.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start the connection pool.</p>
+<p>This will create as many connections as the pool&#8217;s <tt class="xref py py-attr docutils literal"><span class="pre">min</span></tt> variable
+says.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> that fires when all connection have succeeded.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.ConnectionPool.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/txpostgres.html#ConnectionPool.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.ConnectionPool.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the pool.</p>
+<p>Disconnects all connections.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><tt class="xref py py-class docutils literal"><span class="pre">None</span></tt></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.ConnectionPool.remove">
+<tt class="descname">remove</tt><big>(</big><em>connection</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#ConnectionPool.remove"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.ConnectionPool.remove" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a connection from the pool.</p>
+<p>Provided to be able to remove broken connections from the pool. The
+caller should make sure the removed connection does not have queries
+pending.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>connection</strong> (an object produced by the pool&#8217;s <tt class="xref py py-attr docutils literal"><span class="pre">connectionFactory</span></tt>) &#8211; The connection to be removed.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.ConnectionPool.add">
+<tt class="descname">add</tt><big>(</big><em>connection</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#ConnectionPool.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.ConnectionPool.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a connection to the pool.</p>
+<p>Provided to be able to extend the pool with new connections.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>connection</strong> (an object compatible with those produced by the pool&#8217;s
+<tt class="xref py py-attr docutils literal"><span class="pre">connectionFactory</span></tt>) &#8211; The connection to be added.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.ConnectionPool.runQuery">
+<tt class="descname">runQuery</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#ConnectionPool.runQuery"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.ConnectionPool.runQuery" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute an SQL query using a pooled connection and return the result.</p>
+<p>One of the pooled connections will be chosen, its
+<a class="reference internal" href="#txpostgres.Connection.runQuery" title="txpostgres.Connection.runQuery"><tt class="xref py py-meth docutils literal"><span class="pre">runQuery()</span></tt></a> method will be called and the
+resulting <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> will be returned.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> obtained by a pooled connection&#8217;s
+<a class="reference internal" href="#txpostgres.Connection.runQuery" title="txpostgres.Connection.runQuery"><tt class="xref py py-meth docutils literal"><span class="pre">runQuery()</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.ConnectionPool.runOperation">
+<tt class="descname">runOperation</tt><big>(</big><em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#ConnectionPool.runOperation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.ConnectionPool.runOperation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute an SQL query using a pooled connection and discard the result.</p>
+<p>One of the pooled connections will be chosen, its
+<a class="reference internal" href="#txpostgres.Connection.runOperation" title="txpostgres.Connection.runOperation"><tt class="xref py py-meth docutils literal"><span class="pre">runOperation()</span></tt></a> method will be called and
+the resulting <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> will be returned.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> obtained by a pooled connection&#8217;s
+<a class="reference internal" href="#txpostgres.Connection.runOperation" title="txpostgres.Connection.runOperation"><tt class="xref py py-meth docutils literal"><span class="pre">runOperation()</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres.ConnectionPool.runInteraction">
+<tt class="descname">runInteraction</tt><big>(</big><em>interaction</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#ConnectionPool.runInteraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.ConnectionPool.runInteraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run commands in a transaction using a pooled connection and return the
+result.</p>
+<p>One of the pooled connections will be chosen, its
+<a class="reference internal" href="#txpostgres.Connection.runInteraction" title="txpostgres.Connection.runInteraction"><tt class="xref py py-meth docutils literal"><span class="pre">runInteraction()</span></tt></a> method will be called and
+the resulting <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> will be returned.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>interaction</strong> (<em>any callable</em>) &#8211; A callable that will be passed to
+<a class="reference internal" href="#txpostgres.Connection.runInteraction" title="txpostgres.Connection.runInteraction"><tt class="xref py py-meth docutils literal"><span class="pre">Connection.runInteraction</span></tt></a></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> obtained by a pooled connection&#8217;s
+<a class="reference internal" href="#txpostgres.Connection.runInteraction" title="txpostgres.Connection.runInteraction"><tt class="xref py py-meth docutils literal"><span class="pre">Connection.runInteraction</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="txpostgres._PollingMixin">
+<em class="property">class </em><tt class="descclassname">txpostgres.</tt><tt class="descname">_PollingMixin</tt><a class="reference internal" href="_modules/txpostgres.html#_PollingMixin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres._PollingMixin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>An object that wraps something pollable. It can take care of waiting for
+the wrapped pollable to reach the OK state and adapts the pollable&#8217;s
+interface to <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.interfaces.IReadWriteDescriptor.html">interfaces.IReadWriteDescriptor</a>. It will forward all attribute
+access that is has not been wrapped to the underlying pollable. Useful as a
+mixin for classes that wrap a psycopg2 pollable object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>reactor</strong> (an <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.interfaces.IReactorFDSet.html">IReactorFDSet</a> provider) &#8211; The reactor that the class will use to wait for the wrapped
+pollable to reach the OK state.</li>
+<li><strong>prefix</strong> (<tt class="xref py py-class docutils literal"><span class="pre">str</span></tt>) &#8211; Prefix used during log formatting to indicate context.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="txpostgres._PollingMixin.pollable">
+<tt class="descname">pollable</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/txpostgres.html#_PollingMixin.pollable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres._PollingMixin.pollable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the pollable object. Subclasses should override this.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A psycopg2 pollable.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres._PollingMixin.poll">
+<tt class="descname">poll</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/txpostgres.html#_PollingMixin.poll"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres._PollingMixin.poll" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start polling the wrapped pollable.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> that will fire with an instance of this class
+when the pollable reaches the OK state.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="txpostgres._PollingMixin.continuePolling">
+<tt class="descname">continuePolling</tt><big>(</big><em>swallowErrors=False</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#_PollingMixin.continuePolling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres._PollingMixin.continuePolling" title="Permalink to this definition">¶</a></dt>
+<dd><p>Move forward in the poll cycle. This will call psycopg2&#8217;s
+<a class="reference external" href="http://initd.org/psycopg/docs/connection.html#connection.poll">poll()</a> on the wrapped
+pollable and either wait for more I/O or callback or errback the
+<a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> returned earlier if the polling cycle has been completed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>swallowErrors</strong> (<em>bool</em>) &#8211; Should errors with no one to report them to be
+ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raise :</th><td class="field-body"><a class="reference internal" href="#txpostgres.UnexpectedPollResult" title="txpostgres.UnexpectedPollResult"><tt class="xref py py-exc docutils literal"><span class="pre">UnexpectedPollResult</span></tt></a> when <tt class="xref py py-meth docutils literal"><span class="pre">poll()</span></tt>
+returns a result from outside of the <a class="reference external" href="http://initd.org/psycopg/docs/extensions.html#poll-constants">expected list</a>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="exception">
+<dt id="txpostgres.AlreadyConnected">
+<em class="property">exception </em><tt class="descclassname">txpostgres.</tt><tt class="descname">AlreadyConnected</tt><a class="reference internal" href="_modules/txpostgres.html#AlreadyConnected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.AlreadyConnected" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+<p>The database connection is already open.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="txpostgres.RollbackFailed">
+<em class="property">exception </em><tt class="descclassname">txpostgres.</tt><tt class="descname">RollbackFailed</tt><big>(</big><em>connection</em>, <em>originalFailure</em><big>)</big><a class="reference internal" href="_modules/txpostgres.html#RollbackFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.RollbackFailed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+<p>Rolling back the transaction failed, the connection might be in an unusable
+state.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>connection</strong> (<a class="reference internal" href="#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a>) &#8211; The connection that failed to roll back its transaction.</li>
+<li><strong>originalFailure</strong> (a Twisted <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.python.failure.Failure.html">Failure</a>) &#8211; The failure that caused the connection to try to
+roll back the transaction.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="txpostgres.UnexpectedPollResult">
+<em class="property">exception </em><tt class="descclassname">txpostgres.</tt><tt class="descname">UnexpectedPollResult</tt><a class="reference internal" href="_modules/txpostgres.html#UnexpectedPollResult"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.UnexpectedPollResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+<p>Polling returned an unexpected result.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="txpostgres.AlreadyPolling">
+<em class="property">exception </em><tt class="descclassname">txpostgres.</tt><tt class="descname">AlreadyPolling</tt><a class="reference internal" href="_modules/txpostgres.html#AlreadyPolling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#txpostgres.AlreadyPolling" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></tt></p>
+<p>The previous poll cycle has not been finished yet.</p>
+<p>This probably indicates an issue in txpostgres, rather than in user code.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="usage.html"
+                        title="previous chapter">Module usage</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/txpostgres.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="usage.html" title="Module usage"
+             >previous</a> |</li>
+        <li><a href="index.html">txpostgres 1.0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2012, Jan Urbański.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>

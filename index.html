@@ -1,0 +1,153 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>txpostgres - an asynchronous Python driver for PostgreSQL &mdash; txpostgres 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="txpostgres 1.0.0 documentation" href="#" />
+    <link rel="next" title="Module usage" href="usage.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="usage.html" title="Module usage"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">txpostgres 1.0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-txpostgres">
+<span id="txpostgres-an-asynchronous-python-driver-for-postgresql"></span><h1>txpostgres - an asynchronous Python driver for PostgreSQL<a class="headerlink" href="#module-txpostgres" title="Permalink to this headline">¶</a></h1>
+<p>txpostgres is a library for accessing a <a class="reference external" href="http://www.postgresql.org/">PostgreSQL</a> database from the <a class="reference external" href="http://twistedmatrix.com/">Twisted</a>
+framework. It builds upon asynchronous features of the <a class="reference external" href="http://initd.org/psycopg/">Psycopg</a> database
+library, which in turn exposes the asynchronous features of <a class="reference external" href="http://www.postgresql.org/docs/current/static/libpq-async.html">libpq</a>, the
+PostgreSQL C library.</p>
+<p>It requires a version of Psycopg that includes support for <a class="reference external" href="http://initd.org/psycopg/docs/advanced.html#async-support">asynchronous
+connections</a> (versions 2.2.0 and later) and a reasonably recent Twisted (it
+has been tested with Twisted 10.2 onward). Alternatively, <a class="reference external" href="http://pypi.python.org/pypi/psycopg2ct">psycopg2-ctypes</a> can
+be used in lieu of Psycopg.</p>
+<p>txpostgres tries to present an interface that will be familiar to users of both
+Twisted and Psycopg. It features a <a class="reference internal" href="txpostgres.html#txpostgres.Cursor" title="txpostgres.Cursor"><tt class="xref py py-class docutils literal"><span class="pre">Cursor</span></tt></a> wrapper class
+that mimics the interface of a Psycopg <a class="reference external" href="http://initd.org/psycopg/docs/cursor.html#cursor">cursor</a>
+but returns <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.internet.defer.Deferred.html">Deferred</a> objects. It also provides a
+<a class="reference internal" href="txpostgres.html#txpostgres.Connection" title="txpostgres.Connection"><tt class="xref py py-class docutils literal"><span class="pre">Connection</span></tt></a> class that is meant to be a drop-in replacement
+for Twisted&#8217;s <a class="reference external" href="http://twistedmatrix.com/documents/current/api/twisted.enterprise.adbapi.Connection.html">adbapi.Connection</a> with some
+small differences regarding connection establishing.</p>
+<p>The main advantage of txpostgres over Twisted&#8217;s built-in database support is
+non-blocking connection building and complete lack of thread usage.</p>
+<p>txpostgres is distributed under the MIT License, see the LICENSE file for
+details.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Module usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#using-transactions">Using transactions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#customising-the-connection-and-cursor-factories">Customising the connection and cursor factories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#listening-for-database-notifications">Listening for database notifications</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="txpostgres.html">API documentation</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">txpostgres - an asynchronous Python driver for PostgreSQL</a><ul>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="usage.html"
+                        title="next chapter">Module usage</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="usage.html" title="Module usage"
+             >next</a> |</li>
+        <li><a href="#">txpostgres 1.0.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2010-2012, Jan Urbański.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>
