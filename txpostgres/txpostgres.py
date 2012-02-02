@@ -309,9 +309,9 @@ class Cursor(_PollingMixin):
         """
         return self._doit('callproc', procname, params)
 
-    def _doit(self, name, *args, **kwargs):
+    def _doit(self, name, *args):
         try:
-            getattr(self._cursor, name)(*args, **kwargs)
+            getattr(self._cursor, name)(*args)
         except:
             return defer.fail()
 
