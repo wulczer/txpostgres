@@ -10,7 +10,7 @@ What's new in txpostgres 1.0.0
   - support for NOTIFY callbacks via 'addNotifyObserver()'
 
   - many robustness fixes making txpostgres more stable under heavy
-    loads (thanks to Andrey Sirnov and Tobias Oberstein for bug
+    loads (thanks to Andrey Smirnov and Tobias Oberstein for bug
     reports and patches)
 
   - comatibility with psycopg2 > 2.4.2 (thanks to Erik Allik and
