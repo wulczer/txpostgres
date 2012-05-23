@@ -12,7 +12,6 @@ violate the PostgreSQL asynchronous protocol.
 
 .. literalinclude:: cursor_example.py
 
-
 Using transactions
 ------------------
 
