@@ -1,7 +1,7 @@
 from txpostgres import txpostgres
 
 from twisted.internet import reactor
-from twisted.python import log, util
+from twisted.python import log
 
 # connect to the database
 conn = txpostgres.Connection()
