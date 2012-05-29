@@ -10,7 +10,10 @@ try:
     import psycopg2.extensions
 except ImportError:
     # try psycopg2-ctypes
-    import psycopg2ct as psycopg2
+    try:
+        import psycopg2ct as psycopg2
+    except ImportError:
+        raise ImportError('no module named psycopg2 or psycopg2ct')
 
 from txpostgres import txpostgres
 
