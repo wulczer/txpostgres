@@ -19,10 +19,9 @@ import sys
 
 from distutils.core import setup
 
-# # Make sure we import txpostgres from the current directory, not some version
-# # that could have been installed earlier on the system
-curdir = sys.path[0]
-sys.path.insert(0, os.path.join(curdir, 'txpostgres'))
+# Make sure we import txpostgres from the current directory, not some version
+# that could have been installed earlier on the system
+sys.path.insert(0, os.path.dirname(__file__))
 
 from txpostgres import __versionstr__
 
