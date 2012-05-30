@@ -19,7 +19,7 @@ except ImportError:
 from txpostgres import txpostgres
 
 from twisted.trial import unittest
-from twisted.internet import defer, error, main, posixbase, reactor
+from twisted.internet import defer, error, main, posixbase, reactor, task
 from twisted.python import failure
 
 simple_table_schema = "CREATE TABLE simple (x integer)"
@@ -981,34 +981,83 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
                     "You need at least version 2.3.0 of psycopg2 "
                     "to use query cancellation.")
 
+        def createAdditionalConnection():
+            # Create an additional connection that will be used to check if the
+            # main one is already waiting on pg_sleep.
+            self.extra = txpostgres.Connection()
+            return self.extra.connect(user=DB_USER, password=DB_PASS,
+                                      host=DB_HOST, database=DB_NAME)
+
         d = _SimpleDBSetupMixin.setUp(self)
-        return d.addCallback(lambda _: checkCancellationSupport())
+        d.addCallback(lambda _: checkCancellationSupport())
+        return d.addCallback(lambda _: createAdditionalConnection())
+
+    def tearDown(self):
+        d = _SimpleDBSetupMixin.tearDown(self)
+        return d.addCallback(lambda _: self.extra.close())
+
+    def waitForSleep(self):
+        """
+        Return a Deferred that fires when the main connection starts executing
+        pg_sleep. This is done by polling pg_stat_statements from the extra
+        connection.
+        """
+        # XXX is this really the only way to make these tests not racy?
+        interval = 0.5
+        initial_remaining = 10
+
+        def gotResult(res, remaining):
+            if res and res[0][0]:
+                # the result of the query was True, we're done
+                return
+
+            if not remaining:
+                self.fail('main connection did not execute pg_sleep')
+
+            # main connection still not executing pg_sleep, wait
+            return task.deferLater(reactor, interval, checkActivity, remaining)
+
+        def checkActivity(remaining):
+            d = self.extra.runQuery("select current_query like '%%pg_sleep%%' "
+                                    "from pg_stat_activity where procpid = %s",
+                                    (self.conn.get_backend_pid(), ))
+            return d.addCallback(gotResult, remaining - 1)
+
+        return checkActivity(initial_remaining)
 
     def test_simpleCancellation(self):
         d = self.conn.runQuery("select pg_sleep(5)")
-        reactor.callLater(0, self.conn.cancel, d)
-        return self.failUnlessFailure(d, defer.CancelledError)
+
+        def cancelQuery(_):
+            self.conn.cancel(d)
+            return self.failUnlessFailure(d, defer.CancelledError)
+
+        waiting = self.waitForSleep()
+        return waiting.addCallback(cancelQuery)
 
     def test_directCancellation(self):
         d = self.conn.runQuery("select pg_sleep(5)")
 
-        def tryDirectCancel(d):
+        def tryDirectCancel(_):
             self.assertRaises(txpostgres._CancelInProgress, d.cancel)
-        reactor.callLater(0, tryDirectCancel, d)
+            return self.failUnlessFailure(d, defer.CancelledError)
 
-        return self.failUnlessFailure(d, defer.CancelledError)
+        waiting = self.waitForSleep()
+        return waiting.addCallback(tryDirectCancel)
 
     def test_cancelInteraction(self):
         def interaction(c):
-            def cancelAndPassthrough(ret):
-                reactor.callLater(0, self.conn.cancel, d)
-                return ret
+            def cancelQuery(_):
+                self.conn.cancel(d)
+                return d
 
             d = c.execute("insert into simple values (1)")
             d.addCallback(lambda c: c.execute("insert into simple values (2)"))
-            d.addCallback(cancelAndPassthrough)
             d.addCallback(lambda c: c.execute("select pg_sleep(5)"))
-            return d.addCallback(lambda _: "interaction done")
+            d.addCallback(lambda _: "interaction done")
+
+            waiting = self.waitForSleep()
+            return waiting.addCallback(cancelQuery)
 
         d = self.conn.runInteraction(interaction)
         d = self.failUnlessFailure(d, defer.CancelledError)
@@ -1019,13 +1068,18 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
     def test_cancelMultipleQueries(self):
         d1 = self.conn.runQuery("select pg_sleep(5)")
         d2 = self.conn.runQuery("select pg_sleep(5)")
-        reactor.callLater(0, self.conn.cancel, d1)
-        reactor.callLater(0, self.conn.cancel, d2)
 
-        d1 = self.failUnlessFailure(d1, defer.CancelledError)
-        d2 = self.failUnlessFailure(d2, defer.CancelledError)
+        def cancelQueries(_):
+            self.conn.cancel(d1)
+            self.conn.cancel(d2)
 
-        return defer.gatherResults([d1, d2])
+            self.failUnlessFailure(d1, defer.CancelledError)
+            self.failUnlessFailure(d2, defer.CancelledError)
+
+            return defer.gatherResults([d1, d2])
+
+        waiting = self.waitForSleep()
+        return waiting.addCallback(cancelQueries)
 
 
 class TxPostgresNotifyObserversTestCase(Psycopg2TestCase):
