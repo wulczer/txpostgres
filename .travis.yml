@@ -50,13 +50,12 @@ matrix:
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
 
 
+# only need psycopg2ct on PyPy, the rest gets normal psycopg2
+# use zope.interface 3.8.0 since the latest version dropped Python 2.5 support
 install:
   - sudo apt-get install libpq-dev
-  # only need psycopg2ct on PyPy
   - test "$TRAVIS_PYTHON_VERSION" == "pypy" && pip install psycopg2ct --use-mirrors || true
-  # the rest gets normal psycopg2
   - test "$TRAVIS_PYTHON_VERSION" != "pypy" && pip install psycopg2 --use-mirrors || true
-    # use zope.interface 3.8.0 since the latest version dropped Python 2.5 support
   - pip install zope.interface==3.8.0 --use-mirrors
   - pip install twisted --use-mirrors
 
