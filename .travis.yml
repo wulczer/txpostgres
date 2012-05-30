@@ -4,7 +4,9 @@ python:
   - 2.5
   - 2.6
   - 2.7
-  - pypy
+#  there are some issues with the PyPy installation on Travis, making
+#  it impossible to install Twisted, so skip it for now
+#  - pypy
 
 env:
   - TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=default
@@ -23,8 +25,8 @@ matrix:
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=poll
     - python: 2.5
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=epoll
-    # - python: 2.5
-    #   env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
+    - python: 2.5
+      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
 
     - python: 2.6
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=select
@@ -32,8 +34,8 @@ matrix:
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=poll
     - python: 2.6
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=epoll
-    # - python: 2.6
-    #   env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
+    - python: 2.6
+      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
 
     - python: 2.7
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=default
@@ -44,14 +46,18 @@ matrix:
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=poll
     - python: pypy
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=epoll
-    # - python: pypy
-    #   env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
+    - python: pypy
+      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
 
 
 install:
   - sudo apt-get install libpq-dev
-  - test "$TRAVIS_PYTHON_VERSION" != "2.5" && pip install psycopg2ct --use-mirrors || true
+  # only need psycopg2ct on PyPy
+  - test "$TRAVIS_PYTHON_VERSION" == "pypy" && pip install psycopg2ct --use-mirrors || true
+  # the rest gets normal psycopg2
   - test "$TRAVIS_PYTHON_VERSION" != "pypy" && pip install psycopg2 --use-mirrors || true
+    # use zope.interface 3.8.0 since the latest version dropped Python 2.5 support
+  - pip install zope.interface==3.8.0 --use-mirrors
   - pip install twisted --use-mirrors
 
 before_script:
