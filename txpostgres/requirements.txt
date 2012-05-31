@@ -1,0 +1,2 @@
+Twisted>=10.2
+psycopg2>=2.2.0
