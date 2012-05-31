@@ -4,9 +4,7 @@ python:
   - 2.5
   - 2.6
   - 2.7
-#  there are some issues with the PyPy installation on Travis, making
-#  it impossible to install Twisted, so skip it for now
-#  - pypy
+  - pypy
 
 env:
   - TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=default
