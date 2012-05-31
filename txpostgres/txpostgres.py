@@ -26,7 +26,7 @@ non-blocking connection building and complete lack of thread usage.
 txpostgres is distributed under the MIT License, see the LICENSE file for
 details. You can find the source and an issue tracker at
 https://github.com/wulczer/txpostgres and the documentation at
-http://wulczer.github.com/txpostgres/.
+http://txpostgres.readthedocs.org/.
 
 .. _PostgreSQL: http://www.postgresql.org/
 .. _Twisted: http://twistedmatrix.com/

@@ -51,8 +51,8 @@ documentation_
 .. _adbapi.Connection: http://twistedmatrix.com/documents/current/api/twisted.enterprise.adbapi.Connection.html
 .. _PyPy: http://pypy.org/
 .. _PyPI: http://pypi.python.org/pypi/txpostgres
-.. _source:  https://github.com/wulczer/txpostgres
-.. _issue tracker:  http://github.com/txpostgres/issues
-.. _documentation:  http://wulczer.github.com/txpostgres/
+.. _source: https://github.com/wulczer/txpostgres
+.. _issue tracker: https://github.com/txpostgres/issues
+.. _documentation: http://txpostgres.readthedocs.org/
 
 .. image:: https://secure.travis-ci.org/wulczer/txpostgres.png?branch=master
