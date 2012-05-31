@@ -1,4 +1,5 @@
 # -*- test-case-name: test.test_txpostgres -*-
+# -*- coding: utf-8 -*-
 # Copyright (c) 2010-2012, Jan Urbanski.
 # See LICENSE for details.
 """
