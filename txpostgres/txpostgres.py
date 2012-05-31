@@ -23,10 +23,10 @@ small differences regarding connection establishing.
 The main advantage of txpostgres over Twisted's built-in database support is
 non-blocking connection building and complete lack of thread usage.
 
-txpostgres is distributed under the MIT License, see the LICENSE file for
-details. You can find the source and an issue tracker at
-https://github.com/wulczer/txpostgres and the documentation at
-http://txpostgres.readthedocs.org/.
+The library is distributed under the MIT License, see the LICENSE file for
+details. You can contact the author, Jan Urbański, at wulczer@wulczer.org. Feel
+free to download the source_, file bugs in the `issue tracker`_ and consult the
+documentation_
 
 .. _PostgreSQL: http://www.postgresql.org/
 .. _Twisted: http://twistedmatrix.com/
@@ -35,6 +35,9 @@ http://txpostgres.readthedocs.org/.
 .. _libpq: http://www.postgresql.org/docs/current/static/libpq-async.html
 .. _`asynchronous connections`: http://initd.org/psycopg/docs/advanced.html#async-support
 .. _psycopg2-ctypes: http://pypi.python.org/pypi/psycopg2ct
+.. _source: https://github.com/wulczer/txpostgres
+.. _issue tracker: https://github.com/txpostgres/issues
+.. _documentation: http://txpostgres.readthedocs.org/
 """
 
 try:
