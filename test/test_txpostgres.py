@@ -1271,12 +1271,14 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         """
         dl = [defer.Deferred(), defer.Deferred()]
         notifyD = defer.DeferredList(dl)
+        errorD = defer.Deferred()
 
         def observer1(notify):
             self.notifies.append(1)
             dl.pop().callback(None)
 
         def observer2(notify):
+            errorD.callback(None)
             raise RuntimeError("boom")
 
         self.conn.addNotifyObserver(observer1)
@@ -1287,9 +1289,11 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         # at some point both observer functions will get called, one of them
         # raising an exception, to make sure they still are registered and
         # executing, send another notify
+        d.addCallback(lambda _: errorD)
         d.addCallback(lambda _: self.conn.removeNotifyObserver(observer2))
         d.addCallback(lambda _: self.sendNotify())
         d.addCallback(lambda _: notifyD)
-        d.addCallback(lambda _: self.flushLoggedErrors(RuntimeError))
+        d.addCallback(lambda _: self.assertEquals(
+                len(self.flushLoggedErrors(RuntimeError)), 1))
         return d.addCallback(lambda _: self.assertEquals(
                 self.notifies, [1, 1]))
