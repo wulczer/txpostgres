@@ -1,7 +1,6 @@
 language: python
 
 python:
-  - 2.5
   - 2.6
   - 2.7
   # - pypy
@@ -17,15 +16,6 @@ env:
 # only check all four reactors on 2.7
 matrix:
   exclude:
-    - python: 2.5
-      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=select
-    - python: 2.5
-      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=poll
-    - python: 2.5
-      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=epoll
-    - python: 2.5
-      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
-
     - python: 2.6
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=select
     - python: 2.6
