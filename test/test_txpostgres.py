@@ -885,8 +885,8 @@ class TxPostgresConnectionPoolErrorsTestCase(Psycopg2TestCase):
         class ErrorConnection(object):
             connid = 0
 
-            def __init__(self, reactor):
-                self.reactor = reactor
+            def __init__(self, *args):
+                pass
 
             def connect(self, *args, **kwargs):
                 # the third connection fails
@@ -1297,3 +1297,74 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
                 len(self.flushLoggedErrors(RuntimeError)), 1))
         return d.addCallback(lambda _: self.assertEquals(
                 self.notifies, [1, 1]))
+
+    def test_observerReturnsDeferred(self):
+        """
+        If the observer function returns a Deferred, the next notify won't be
+        processed until it fires.
+        """
+        observerDs = [defer.Deferred(), defer.Deferred()]
+        notifyDs = [defer.Deferred(), defer.Deferred()]
+
+        oneObserverDone = defer.DeferredList(notifyDs, fireOnOneCallback=True)
+        allObserversDone = defer.DeferredList(notifyDs)
+
+        def fireAllObserverDs():
+            for observerD in observerDs:
+                observerD.callback(None)
+            return allObserversDone
+
+        def observer(notify, observerD, notifyD):
+            self.notifies.append(notify)
+            # don't callback notifyD synchronously, or oneObserverDone might
+            # start processing immediately
+            reactor.callLater(0, notifyD.callback, None)
+            return observerD
+
+        def makeObserver(observerD, notifyD):
+            return lambda notify: observer(notify, observerD, notifyD)
+
+        for observerD, notifyD in zip(observerDs, notifyDs):
+            self.conn.addNotifyObserver(makeObserver(observerD, notifyD))
+
+        d = self.conn.runOperation("listen txpostgres_test")
+        d.addCallback(lambda _: self.sendNotify())
+        # wait for one of the observers to finish -- there's no guarantee of
+        # order, so can't say which
+        d.addCallback(lambda _: oneObserverDone)
+        # only one observer should have been called
+        d.addCallback(lambda _: self.assertEquals(len(self.notifies), 1))
+        # fire both observer Deferreds to make sure the processing finishes
+        d.addCallback(lambda _: fireAllObserverDs())
+        # both observers should now be called
+        return d.addCallback(lambda _: self.assertEquals(
+                len(self.notifies), 2))
+
+    def test_customNotifyCooperator(self):
+        """
+        Using a custom cooperator for notifies is possible.
+        """
+        cooperateD = defer.Deferred()
+
+        class FakeCooperator(object):
+
+            def cooperate(self, iterator):
+                self.result = list(iterator)
+                cooperateD.callback(None)
+
+        cooperator = FakeCooperator()
+
+        def observer(notify):
+            return True
+
+        c = txpostgres.Connection(cooperator=cooperator)
+        c.addNotifyObserver(observer)
+
+        d = c.connect(user=DB_USER, password=DB_PASS,
+                      host=DB_HOST, database=DB_NAME)
+        d.addCallback(lambda _: c.runOperation("listen txpostgres_test"))
+        d.addCallback(lambda _: self.sendNotify())
+        d.addCallback(lambda _: cooperateD)
+        d.addCallback(lambda _: self.assertEquals(
+                cooperator.result, [True]))
+        return d.addCallback(lambda _: c.close())

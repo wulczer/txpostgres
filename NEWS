@@ -4,6 +4,9 @@ What's new in txpostgres 1.1.0
   - Sphinx documentation and examples were added in an attempt to
     produce some formal docs and guide for new txpostgres users
 
+  - NOTIFY events are now processed using a Cooperator to avoid
+    blocking the reactor thread in case there are many
+
 What's new in txpostgres 1.0.0
 ------------------------------
 

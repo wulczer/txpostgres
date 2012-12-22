@@ -52,7 +52,7 @@ except ImportError:
 
 from zope.interface import implements
 
-from twisted.internet import interfaces, main, defer
+from twisted.internet import interfaces, main, defer, task
 from twisted.python import failure, log
 
 
@@ -386,6 +386,10 @@ class Connection(_PollingMixin):
     :param reactor: A Twisted reactor or :class:`None`, which means the current
         reactor
 
+    :param cooperator: A Twisted :tm:`Cooperator <internet.task.Cooperator>` to
+        process :pg:`NOTIFY <notify>` events or :class:`None`, which means
+        using :tm:`task.cooperate <internet.task.cooperate>`
+
     :var connectionFactory: The factory used to produce connections, defaults
         to :psycopg:`psycopg2.connect <module.html#psycopg2.connect>`
     :vartype connectionFactory: any callable
@@ -400,10 +404,15 @@ class Connection(_PollingMixin):
     connectionFactory = staticmethod(psycopg2.connect)
     cursorFactory = Cursor
 
-    def __init__(self, reactor=None):
+    def __init__(self, reactor=None, cooperator=None):
         if not reactor:
             from twisted.internet import reactor
+        if not cooperator:
+            # the task module provides cooperate()
+            cooperator = task
+
         self.reactor = reactor
+        self.cooperator = cooperator
         self.prefix = "connection"
 
         # this lock will be used to prevent concurrent query execution
@@ -666,20 +675,25 @@ class Connection(_PollingMixin):
     def checkForNotifies(self):
         """
         Check if :pg:`NOTIFY <notify>` events have been received and if so,
-        dispatch them to the registered observers. This is done automatically,
-        user code should never need to call this method.
+        dispatch them to the registered observers, using the :tm:`Cooperator
+        <internet.task.Cooperator>` provided in the constructor. This is done
+        automatically, user code should never need to call this method.
         """
+        # avoid creating a CooperativeTask in the common case of no notifies
+        if self._connection.notifies:
+            self.cooperator.cooperate(self._checkForNotifies())
+
+    def _checkForNotifies(self):
         while self._connection.notifies:
             notify = self._connection.notifies.pop()
             # don't iterate over self._notifyObservers directly because the
             # observer function might call removeNotifyObserver, thus modifying
             # the set while it's being iterated
             for observer in self.getNotifyObservers():
-                # don't allow exceptions from observers to propagate, as this
-                # method is called from doRead -- exceptions here would lead to
-                # a disconnect
+                # this method is run from inside the global Cooperator, so
+                # there's no one to report errors to -- just log them
                 try:
-                    observer(notify)
+                    yield observer(notify)
                 except:
                     log.err()
 
@@ -689,6 +703,16 @@ class Connection(_PollingMixin):
         <notify>` event is delivered to this connection. Any number of
         observers can be added to a connection. Adding an observer that's
         already been added is ignored.
+
+        Observer functions are processed using the :tm:`Cooperator
+        <internet.task.Cooperator>` provided in the constructor to avoid
+        blocking the reactor thread when processing large numbers of events. If
+        an observer returns a :d:`Deferred`, processing waits until it fires or
+        errbacks.
+
+        There are no guarantees as to the order in which observer functions are
+        called when :pg:`NOTIFY <notify>` events are delivered. Exceptions in
+        observers are logged and discarded.
 
         :param observer: A callable whose first argument is a
             :psycopg:`psycopg2.extensions.Notify
@@ -733,11 +757,13 @@ class ConnectionPool(object):
     :vartype connectionFactory: any callable
 
     :var reactor: The reactor passed to :attr:`.connectionFactory`.
+    :var cooperator: The cooperator passed to :attr:`.connectionFactory`.
     """
 
     min = 3
     connectionFactory = Connection
     reactor = None
+    cooperator = None
 
     def __init__(self, _ignored, *connargs, **connkw):
         """
@@ -761,7 +787,8 @@ class ConnectionPool(object):
         self.connargs = connargs
         self.connkw = connkw
         self.connections = set(
-            [self.connectionFactory(self.reactor) for _ in range(self.min)])
+            [self.connectionFactory(self.reactor, self.cooperator)
+             for _ in range(self.min)])
 
         # to avoid checking out more connections than there are pooled in total
         self._semaphore = defer.DeferredSemaphore(self.min)
