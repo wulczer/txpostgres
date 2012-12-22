@@ -733,7 +733,6 @@ class ConnectionPool(object):
     :vartype connectionFactory: any callable
 
     :var reactor: The reactor passed to :attr:`.connectionFactory`.
-    :vartype connectionFactory: any callable
     """
 
     min = 3
