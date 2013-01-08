@@ -1340,6 +1340,39 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         return d.addCallback(lambda _: self.assertEquals(
                 len(self.notifies), 2))
 
+    def test_observerReturnsFailingDeferred(self):
+        """
+        If the observer function returns a failing Deferred, the failure is
+        logged and processing continues.
+        """
+        dl = [defer.Deferred(), defer.Deferred()]
+        notifyD = defer.DeferredList(dl)
+
+        # use a factory function to ensure that id(observer1) != id(observer2)
+        def makeObserver():
+            def observer(notify):
+                self.notifies.append(1)
+                # callback asynchronously to make sure the function runs to
+                # completion before continuing notifyD's callback chain
+                reactor.callLater(0, dl.pop().callback, None)
+                return defer.fail(RuntimeError("boom"))
+
+            return observer
+
+        self.conn.addNotifyObserver(makeObserver())
+        self.conn.addNotifyObserver(makeObserver())
+
+        d = self.conn.runOperation("listen txpostgres_test")
+        d.addCallback(lambda _: self.sendNotify())
+        # even though the observer functions return a failing Deferred, both of
+        # them will be called
+        d.addCallback(lambda _: notifyD)
+        # both errors get logged
+        d.addCallback(lambda _: self.assertEquals(
+                len(self.flushLoggedErrors(RuntimeError)), 2))
+        return d.addCallback(lambda _: self.assertEquals(
+                self.notifies, [1, 1]))
+
     def test_customNotifyCooperator(self):
         """
         Using a custom cooperator for notifies is possible.
@@ -1349,7 +1382,12 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         class FakeCooperator(object):
 
             def cooperate(self, iterator):
-                self.result = list(iterator)
+                self.result = []
+
+                for ret in iterator:
+                    defer.maybeDeferred(lambda: ret).addCallback(
+                        self.result.append)
+
                 cooperateD.callback(None)
 
         cooperator = FakeCooperator()

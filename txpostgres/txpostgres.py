@@ -691,11 +691,11 @@ class Connection(_PollingMixin):
             # the set while it's being iterated
             for observer in self.getNotifyObservers():
                 # this method is run from inside the global Cooperator, so
-                # there's no one to report errors to -- just log them
-                try:
-                    yield observer(notify)
-                except:
-                    log.err()
+                # there's no one to report errors to -- just log them; use
+                # maybeDeferred in case the observer returns a failing Deferred
+                # that would stop the cooperator from processing remaining
+                # observers
+                yield defer.maybeDeferred(observer, notify).addErrback(log.err)
 
     def addNotifyObserver(self, observer):
         """
