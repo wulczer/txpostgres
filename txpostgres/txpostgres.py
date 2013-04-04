@@ -482,9 +482,9 @@ class Connection(_PollingMixin):
         # twice, as the second call will not have any effects.
 
         for cursor in set(self._cursors):
-            cursor.connectionLost(main.CONNECTION_DONE)
+            cursor.connectionLost(failure.Failure(main.CONNECTION_DONE))
 
-        self.connectionLost(main.CONNECTION_DONE)
+        self.connectionLost(failure.Failure(main.CONNECTION_DONE))
 
     def cursor(self):
         """

@@ -796,13 +796,64 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
             raise unittest.SkipTest("This test fails on versions of Twisted "
                                     "affected by Twisted bug #4539")
 
-        d = self.conn.runQuery("select pg_sleep(5)")
-        reactor.callLater(0, self.conn.close)
+        def _checkConnectionLost(f, testcase):
+            if not isinstance(f, failure.Failure):
+                testcase.fail("connectionLost got non-Failure: %r" % f)
+            if not f.check(error.ConnectionDone):
+                testcase.fail("connectionLost got wrong Failure: %r" % f.value)
 
+        producedCursors = []
+
+        class StrictLosingConnection(txpostgres.Connection):
+            testcase = self
+            seenConnectionLost = False
+
+            def connectionLost(self, reason):
+                txpostgres.Connection.connectionLost(self, reason)
+                self.seenConnectionLost = True
+                _checkConnectionLost(reason, self.testcase)
+
+            def cursor(self, *args, **kwargs):
+                cursor = txpostgres.Connection.cursor(self, *args, **kwargs)
+                producedCursors.append(cursor)
+                return cursor
+
+        class StrictLosingCursor(txpostgres.Cursor):
+            testcase = self
+            seenConnectionLost = False
+
+            def connectionLost(self, reason):
+                txpostgres.Cursor.connectionLost(self, reason)
+                self.seenConnectionLost = True
+                _checkConnectionLost(reason, self.testcase)
+
+        def _runAndClose():
+            # start executing the query and close it in the next reactor cycle
+            d = conn.runQuery("select pg_sleep(5)")
+            reactor.callLater(0, conn.close)
+            return d
+
+        def _waitReactorCycle():
+            # wait one reactor cycle to allow callback to propagate
+            d = defer.Deferred()
+            reactor.callLater(0, d.callback, None)
+            return d
+
+        def _checkSeenConnectionLost():
+            self.assertTrue(conn.seenConnectionLost)
+            for cursor in producedCursors:
+                self.assertTrue(cursor.seenConnectionLost)
+
+        conn = StrictLosingConnection()
+        conn.cursorFactory = StrictLosingCursor
+        d = conn.connect(user=DB_USER, password=DB_PASS,
+                         host=DB_HOST, database=DB_NAME)
+
+        d.addCallback(lambda _: _runAndClose())
         # the query fails with a disconnected error
         d = self.assertFailure(d, error.ConnectionDone)
-        # restore the connection, otherwise all the other tests will fail
-        return d.addBoth(self.restoreConnection)
+        d.addCallback(lambda _: _waitReactorCycle())
+        return d.addCallback(lambda _: _checkSeenConnectionLost())
 
 
 class TxPostgresConnectionPoolTestCase(Psycopg2TestCase):
