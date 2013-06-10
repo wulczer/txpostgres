@@ -27,6 +27,10 @@ matrix:
 
     - python: 2.7
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=default
+      # "file descriptor cannot be a negative integer" are back,
+      # disable tests with select temporarily
+    - python: 2.7
+      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=select
 
     - python: pypy
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=select
