@@ -37,7 +37,7 @@ documentation_
 .. _`asynchronous connections`: http://initd.org/psycopg/docs/advanced.html#async-support
 .. _psycopg2-ctypes: http://pypi.python.org/pypi/psycopg2ct
 .. _source: https://github.com/wulczer/txpostgres
-.. _issue tracker: https://github.com/txpostgres/issues
+.. _issue tracker: https://github.com/wulczer/txpostgres/issues
 .. _documentation: http://txpostgres.readthedocs.org/
 """
 
