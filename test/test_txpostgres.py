@@ -522,6 +522,15 @@ class TxPostgresManualQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.callback(c)
         return d
 
+    def test_cursorKwargs(self):
+        """
+        Cursor methods can be called using keyword arguments.
+        """
+        c = self.conn.cursor()
+        d = c.execute(params=(1, ), query="select %s")
+        return d.addCallback(
+            lambda c: self.assertEquals(c.fetchall(), [(1, )]))
+
     def test_errors(self):
         """
         Errors from the database are reported as failures.
