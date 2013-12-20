@@ -167,13 +167,18 @@ class _PollingMixin(object):
 
         try:
             state = self.pollable().poll()
-        except:
-            if self._pollingD:
-                d, self._pollingD = self._pollingD, None
-                self.reactor.callLater(0, d.errback, failure.Failure())
-            elif not swallowErrors:
-                # no one to report the error to
-                raise
+        except Exception as e:
+                if self._pollingD:
+                    d, self._pollingD = self._pollingD, None
+                    self.reactor.callLater(0, d.errback, failure.Failure())
+                # OperationalErrors happen when we can somehow not talk to the database,
+                # We let the user decide whether he wants to do something about that or not
+                # self.reconnector might not be set for all subclasses, so we check if it exists
+                elif isinstance(e, psycopg2.OperationalError) and hasattr(self, 'reconnector') and self.reconnector:
+                    return self.reconnector(e)
+                elif not swallowErrors:
+                    # no one to report the error to
+                    raise
         else:
             if state == psycopg2.extensions.POLL_OK:
                 if self._pollingD:
@@ -404,7 +409,7 @@ class Connection(_PollingMixin):
     connectionFactory = staticmethod(psycopg2.connect)
     cursorFactory = Cursor
 
-    def __init__(self, reactor=None, cooperator=None):
+    def __init__(self, reactor=None, cooperator=None, reconnector=None):
         if not reactor:
             from twisted.internet import reactor
         if not cooperator:
@@ -422,6 +427,9 @@ class Connection(_PollingMixin):
         self._cursors = set()
         # observers for NOTIFY events
         self._notifyObservers = set()
+
+        # An optional 'callback' for when the connection fails
+        self.reconnector = reconnector
 
     def pollable(self):
         return self._connection
@@ -669,7 +677,7 @@ class Connection(_PollingMixin):
         # continue watching for NOTIFY events, but be careful to check the
         # connection state in case one of the notify handler function caused a
         # disconnection
-        if not self._connection.closed:
+        if not self._connection.closed and self.fileno() != -1:
             self.reactor.addReader(self)
 
     def checkForNotifies(self):
