@@ -170,14 +170,14 @@ class _PollingMixin(object):
         try:
             state = self.pollable().poll()
         except Exception as e:
-                if self._pollingD:
-                    d, self._pollingD = self._pollingD, None
-                    self.reactor.callLater(0, d.errback, failure.Failure())
                 # OperationalErrors happen when we can somehow not talk to the database,
                 # We let the user decide whether he wants to do something about that or not
                 # self.reconnector might not be set for all subclasses, so we check if it exists
-                elif isinstance(e, psycopg2.OperationalError) and hasattr(self, 'reconnector') and self.reconnector:
+                if isinstance(e, psycopg2.OperationalError) and hasattr(self, 'reconnector') and self.reconnector:
                     return self.reconnector(e)
+                elif self._pollingD:
+                    d, self._pollingD = self._pollingD, None
+                    self.reactor.callLater(0, d.errback, failure.Failure())
                 elif not swallowErrors:
                     # no one to report the error to
                     raise
@@ -935,6 +935,7 @@ class ReconnectingConnection(object):
 
     def __init__(self, logger=None, recon_delay=3, debug=False, **connect_kwargs):
         self.logger = logging.getLogger(__name__)
+
         self.conn = None
         # We use a state-machine like
         self.state = 'not_connected'
@@ -943,7 +944,11 @@ class ReconnectingConnection(object):
         # See self.connect
         self.connection_args = connect_kwargs
 
+        self.reconnectig = True
+
         self.pending_requests = {}
+
+        self.reconnect_task = task.LoopingCall(self.reconnect)
 
     def connect(self):
         """
@@ -976,14 +981,17 @@ class ReconnectingConnection(object):
             except:
                 # Just. Keep. Running.
                 self.logger.warning('Could not cleanly close the connection.')
-        reactor.callLater(self.recon_delay, self.reconnect)
+
+        if not self.reconnect_task.running:
+            self.reconnect_task.start(self.recon_delay, now=False)
 
     def reconnect(self):
+        self.reconnect_task.stop()
+        self.reconn_call = None
         self.connect()
         self.state = 'reconnecting'
 
     def runQuery(self, *args, **kwargs):
-        #TODO: add a some sort of deffered magic here, for when we are disconnected and want to start querying later
         if self.state == 'connected':
             return self.conn.runQuery(*args, **kwargs)
         else:

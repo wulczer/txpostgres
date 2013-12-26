@@ -7,10 +7,10 @@ from txpostgres.txpostgres import ReconnectingConnection
 def print_query(conn, *_):
     conn.logger.debug('I am currently... %s, with %i pending requests', conn.state, len(conn.pending_requests.keys()))
 
-    conn.runQuery('select tablename from pg_tables').addCallback(println)
+    conn.runQuery('select tablename from pg_tables limit 5').addCallback(println)
 
 if __name__ == '__main__':
-    logging.basicConfig()
+    logging.basicConfig(level=logging.DEBUG)
     connection = ReconnectingConnection(database='postgres',
                                         user='diallictive',
                                         password='diallictive',
