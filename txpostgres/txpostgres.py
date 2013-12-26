@@ -40,6 +40,8 @@ documentation_
 .. _issue tracker: https://github.com/wulczer/txpostgres/issues
 .. _documentation: http://txpostgres.readthedocs.org/
 """
+import logging
+from twisted.internet import reactor
 
 try:
     import psycopg2
@@ -167,13 +169,18 @@ class _PollingMixin(object):
 
         try:
             state = self.pollable().poll()
-        except:
-            if self._pollingD:
-                d, self._pollingD = self._pollingD, None
-                self.reactor.callLater(0, d.errback, failure.Failure())
-            elif not swallowErrors:
-                # no one to report the error to
-                raise
+        except Exception as e:
+                # OperationalErrors happen when we can somehow not talk to the database,
+                # We let the user decide whether he wants to do something about that or not
+                # self.reconnector might not be set for all subclasses, so we check if it exists
+                if isinstance(e, psycopg2.OperationalError) and hasattr(self, 'reconnector') and self.reconnector:
+                    return self.reconnector(e)
+                elif self._pollingD:
+                    d, self._pollingD = self._pollingD, None
+                    self.reactor.callLater(0, d.errback, failure.Failure())
+                elif not swallowErrors:
+                    # no one to report the error to
+                    raise
         else:
             if state == psycopg2.extensions.POLL_OK:
                 if self._pollingD:
@@ -404,7 +411,7 @@ class Connection(_PollingMixin):
     connectionFactory = staticmethod(psycopg2.connect)
     cursorFactory = Cursor
 
-    def __init__(self, reactor=None, cooperator=None):
+    def __init__(self, reactor=None, cooperator=None, reconnector=None):
         if not reactor:
             from twisted.internet import reactor
         if not cooperator:
@@ -422,6 +429,9 @@ class Connection(_PollingMixin):
         self._cursors = set()
         # observers for NOTIFY events
         self._notifyObservers = set()
+
+        # An optional 'callback' for when the connection fails
+        self.reconnector = reconnector
 
     def pollable(self):
         return self._connection
@@ -669,7 +679,7 @@ class Connection(_PollingMixin):
         # continue watching for NOTIFY events, but be careful to check the
         # connection state in case one of the notify handler function caused a
         # disconnection
-        if not self._connection.closed:
+        if not self._connection.closed and self.fileno() != -1:
             self.reactor.addReader(self)
 
     def checkForNotifies(self):
@@ -914,3 +924,78 @@ class ConnectionPool(object):
         c = self.connections.pop()
         d = c.runInteraction(interaction, *args, **kwargs)
         return d.addBoth(self._putBackAndPassthrough, c)
+
+
+class ReconnectingConnection(object):
+    """
+    Wrapper around txpostgres.connection that will keep trying to reconnect forever
+    The goals here are to suppress all connection errors and running queries without
+    having to worry about the underlying connection state.
+    """
+
+    def __init__(self, logger=None, recon_delay=3, debug=False, **connect_kwargs):
+        self.logger = logging.getLogger(__name__)
+
+        self.conn = None
+        # We use a state-machine like
+        self.state = 'not_connected'
+        # Delay before attempting to reconnect
+        self.recon_delay = recon_delay
+        # See self.connect
+        self.connection_args = connect_kwargs
+
+        self.reconnectig = True
+
+        self.pending_requests = {}
+
+        self.reconnect_task = task.LoopingCall(self.reconnect)
+
+    def connect(self):
+        """
+        Call the wrapped connection's connect, but catch whatever comes back, inlcuding future connection errors
+        """
+        self.conn = Connection(reconnector=self.connection_failed)
+        d = self.conn.connect(**self.connection_args)
+        d.addCallback(self.connection_made)
+        d.addErrback(self.connection_failed)
+
+    def connection_made(self, conn):
+        self.logger.debug('Connection was made!')
+        self.state = 'connected'
+        #If we had pending requests, now is the time to run them
+        for requestD, query in self.pending_requests.items():
+            d = self.conn.runQuery(*query[0], **query[1])
+            d.addCallback(requestD.callback)
+            d.addErrback(requestD.errback)
+            del(self.pending_requests[requestD])
+
+    def connection_failed(self, exc):
+        self.logger.info('Connection Failed, resetting it! (%s)', exc)
+
+        # Don't close the connection before it had a chance to reconnect
+        if self.state != 'reconnecting':
+            self.state = 'disconnected'
+            try:
+                self.conn.close()
+                del self.conn
+            except:
+                # Just. Keep. Running.
+                self.logger.warning('Could not cleanly close the connection.')
+
+        if not self.reconnect_task.running:
+            self.reconnect_task.start(self.recon_delay, now=False)
+
+    def reconnect(self):
+        self.reconnect_task.stop()
+        self.reconn_call = None
+        self.connect()
+        self.state = 'reconnecting'
+
+    def runQuery(self, *args, **kwargs):
+        if self.state == 'connected':
+            return self.conn.runQuery(*args, **kwargs)
+        else:
+            #If we are not connected, remember the query to call it later, when we have a connection
+            d = defer.Deferred()
+            self.pending_requests[d] = (args, kwargs)
+            return d
