@@ -1,9 +1,3 @@
-# Copyright (c) 2010 Jan Urbanski.
-# See LICENSE for details.
-
-"""
-Tests for twisted.enterprise.pgadbapi.
-"""
 import os
 
 try:

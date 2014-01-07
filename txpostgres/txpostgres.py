@@ -55,7 +55,6 @@ from zope.interface import implements
 from twisted.internet import interfaces, main, defer, task
 from twisted.python import failure, log
 
-
 try:
     psycopg2.extensions.POLL_OK
 except AttributeError:
