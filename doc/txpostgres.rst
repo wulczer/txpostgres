@@ -1,17 +1,31 @@
 API documentation
 -----------------
 
-.. autoclass:: txpostgres.Connection
+All txpostgres APIs are documented here.
+
+txpostgres.txpostgres
+~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: txpostgres.txpostgres.Connection
     :exclude-members: connectionFactory, cursorFactory
 
-.. autoclass:: txpostgres.Cursor
+.. autoclass:: txpostgres.txpostgres.Cursor
 
-.. autoclass:: txpostgres.ConnectionPool
+.. autoclass:: txpostgres.txpostgres.ConnectionPool
     :exclude-members: connectionFactory
 
-    .. automethod:: txpostgres.ConnectionPool.__init__
+    .. automethod:: txpostgres.txpostgres.ConnectionPool.__init__
 
-.. autoclass:: txpostgres._PollingMixin
+.. autoclass:: txpostgres.txpostgres._PollingMixin
+
+.. autoexception:: txpostgres.txpostgres.AlreadyConnected
+
+.. autoexception:: txpostgres.txpostgres.RollbackFailed
+
+.. autoexception:: txpostgres.txpostgres.UnexpectedPollResult
+
+.. autoexception:: txpostgres.txpostgres.AlreadyPolling
+
 
 .. autoexception:: txpostgres.AlreadyConnected
 

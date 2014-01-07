@@ -5,7 +5,7 @@ Basic usage of the module is not very different from using Twisted's adbapi:
 
 .. literalinclude:: basic_example.py
 
-If you want you can use the :class:`~txpostgres.Cursor` class directly, with a
+If you want you can use the :class:`~txpostgres.txpostgres.Cursor` class directly, with a
 interface closer to Psycopg. Note that using this method you have to make sure
 never to execute a query before the previous one finishes, as that would
 violate the PostgreSQL asynchronous protocol.
@@ -17,7 +17,7 @@ Using transactions
 
 Every query executed by txpostgres is committed immediately. If you need to
 execute a series of queries in a transaction, use the
-:meth:`~txpostgres.Connection.runInteraction` method:
+:meth:`~txpostgres.txpostgres.Connection.runInteraction` method:
 
 .. literalinclude:: transaction_example.py
 
@@ -27,9 +27,9 @@ Customising the connection and cursor factories
 You might want to customise the way txpostgres creates connections and cursors
 to take advantage of Psycopg features like :psycopg:`dictionary cursors
 <extras.html#dictionary-like-cursor>`. To do that, define a subclass of
-:class:`~txpostgres.Connection` and override :attr:`connectionFactory` or
-:attr:`cursorFactory` class attributes to use your custom code. Here's an
-example of how to use dict cursors:
+:class:`~txpostgres.txpostgres.Connection` and override
+:attr:`connectionFactory` or :attr:`cursorFactory` class attributes to use your
+custom code. Here's an example of how to use dict cursors:
 
 .. literalinclude:: dictcursor_example.py
 

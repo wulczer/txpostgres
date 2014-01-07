@@ -14,10 +14,10 @@ has been tested with Twisted 10.2 onward). Alternatively, psycopg2-ctypes_ can
 be used in lieu of Psycopg.
 
 txpostgres tries to present an interface that will be familiar to users of both
-Twisted and Psycopg. It features a :class:`~txpostgres.Cursor` wrapper class
+Twisted and Psycopg. It features a :class:`~txpostgres.txpostgres.Cursor` wrapper class
 that mimics the interface of a Psycopg :psycopg:`cursor <cursor.html#cursor>`
 but returns :d:`Deferred` objects. It also provides a
-:class:`~txpostgres.Connection` class that is meant to be a drop-in replacement
+:class:`~txpostgres.txpostgres.Connection` class that is meant to be a drop-in replacement
 for Twisted's :tm:`adbapi.Connection <enterprise.adbapi.Connection>` with some
 small differences regarding connection establishing.
 
@@ -154,9 +154,9 @@ class _PollingMixin(object):
             ignored.
         :type swallowErrors: bool
 
-        :raise: :exc:`~txpostgres.UnexpectedPollResult` when :meth:`poll`
-            returns a result from outside of the :psycopg:`expected list
-            <extensions.html#poll-constants>`.
+        :raise: :exc:`~txpostgres.txpostgres.UnexpectedPollResult` when
+            :meth:`poll` returns a result from outside of the
+            :psycopg:`expected list <extensions.html#poll-constants>`.
         """
         # This method often gets called from the reactor's doRead/doWrite
         # handlers. Don't callback or errback the polling Deferred here, as
@@ -275,9 +275,9 @@ class Cursor(_PollingMixin):
     asynchronous queries execution, so you need to take care not to execute a
     query while another is still being processed.
 
-    In most cases you should just use the :class:`~txpostgres.Connection`
-    methods that will handle the locking necessary to prevent concurrent query
-    execution.
+    In most cases you should just use the
+    :class:`~txpostgres.txpostgres.Connection` methods that will handle the
+    locking necessary to prevent concurrent query execution.
     """
 
     def __init__(self, cursor, connection):
@@ -360,7 +360,7 @@ class RollbackFailed(Exception):
     state.
 
     :var connection: The connection that failed to roll back its transaction.
-    :vartype connection: :class:`~txpostgres.Connection`
+    :vartype connection: :class:`~txpostgres.txpostgres.Connection`
 
     :var originalFailure: The failure that caused the connection to try to
         roll back the transaction.
@@ -395,10 +395,10 @@ class Connection(_PollingMixin):
     :vartype connectionFactory: any callable
 
     :var cursorFactory: The factory used to produce cursors, defaults to
-        :class:`~txpostgres.Cursor`
+        :class:`~txpostgres.txpostgres.Cursor`
     :vartype cursorFactory: a callable accepting two positional arguments, a
         :psycopg:`psycopg2.cursor <cursor.html#cursor>` and a
-        :class:`~txpostgres.Connection`
+        :class:`~txpostgres.txpostgres.Connection`
     """
 
     connectionFactory = staticmethod(psycopg2.connect)
@@ -435,8 +435,8 @@ class Connection(_PollingMixin):
 
         :return: A :d:`Deferred` that will fire when the connection is open.
 
-        :raise: :exc:`~txpostgres.AlreadyConnected` when the connection has
-            already been opened.
+        :raise: :exc:`~txpostgres.txpostgres.AlreadyConnected` when the
+            connection has already been opened.
         """
         if self._connection and not self._connection.closed:
             return defer.fail(AlreadyConnected())
@@ -497,9 +497,9 @@ class Connection(_PollingMixin):
         Execute an SQL query and return the result.
 
         An asynchronous cursor will be created and its
-        :meth:`~txpostgres.Cursor.execute` method will be invoked with the
-        provided arguments. After the query completes the results will be
-        fetched and the returned :d:`Deferred` will fire with the result.
+        :meth:`~txpostgres.txpostgres.Cursor.execute` method will be invoked
+        with the provided arguments. After the query completes the results will
+        be fetched and the returned :d:`Deferred` will fire with the result.
 
         The connection is always in autocommit mode, so the query will be run
         in a one-off transaction. In case of errors a :tm:`Failure
@@ -523,10 +523,10 @@ class Connection(_PollingMixin):
         """
         Execute an SQL query and discard the result.
 
-        Identical to :meth:`~txpostgres.Connection.runQuery`, but the result
-        won't be fetched and instead :class:`None` will be returned. It is
-        intended for statements that do not normally return values, like INSERT
-        or DELETE.
+        Identical to :meth:`~txpostgres.txpostgres.Connection.runQuery`, but
+        the result won't be fetched and instead :class:`None` will be
+        returned. It is intended for statements that do not normally return
+        values, like INSERT or DELETE.
 
         It is safe to call this method multiple times without waiting for the
         first query to complete.
@@ -546,11 +546,11 @@ class Connection(_PollingMixin):
         Run commands in a transaction and return the result.
 
         :obj:`interaction` should be a callable that will be passed a
-        :class:`~txpostgres.Cursor` object. Before calling :obj:`interaction` a
-        new transaction will be started, so the callable can assume to be
-        running all its commands in a transaction. If :obj:`interaction`
-        returns a :d:`Deferred` processing will wait for it to fire before
-        proceeding.
+        :class:`~txpostgres.txpostgres.Cursor` object. Before calling
+        :obj:`interaction` a new transaction will be started, so the callable
+        can assume to be running all its commands in a transaction. If
+        :obj:`interaction` returns a :d:`Deferred` processing will wait for it
+        to fire before proceeding.
 
         After :obj:`interaction` finishes work the transaction will be
         automatically committed. If it raises an exception or returns a
@@ -561,10 +561,11 @@ class Connection(_PollingMixin):
         the failure obtained trying to commit will be returned.
 
         If rolling back the transaction fails the failure obtained from the
-        rollback attempt will be logged and a :exc:`~txpostgres.RollbackFailed`
-        failure will be returned. The returned failure will contain references
-        to the original failure that caused the transaction to be rolled back
-        and to the :class:`~txpostgres.Connection` in which that happend, so
+        rollback attempt will be logged and a
+        :exc:`~txpostgres.txpostgres.RollbackFailed` failure will be
+        returned. The returned failure will contain references to the original
+        failure that caused the transaction to be rolled back and to the
+        :class:`~txpostgres.txpostgres.Connection` in which that happend, so
         the user can take a decision whether she still wants to be using it or
         just close it, because an open transaction might have been left open in
         the database.
@@ -573,7 +574,7 @@ class Connection(_PollingMixin):
         first query to complete.
 
         :param interaction: A callable whose first argument is a
-            :class:`~txpostgres.Cursor`.
+            :class:`~txpostgres.txpostgres.Cursor`.
         :type interaction: any callable
 
         :return: A :d:`Deferred` that will fire with the return value of
@@ -621,7 +622,7 @@ class Connection(_PollingMixin):
         really be sure which one are you cancelling.
 
         :param d: a :d:`Deferred` returned by one of
-            :class:`~txpostgres.Connection` methods.
+            :class:`~txpostgres.txpostgres.Connection` methods.
         """
         try:
             d.cancel()
@@ -630,9 +631,9 @@ class Connection(_PollingMixin):
 
     def cursorRunning(self, cursor):
         """
-        Called automatically when a :class:`~txpostgres.Cursor` created by this
-        :class:`~txpostgres.Connection` starts polling after executing a query. User
-        code should never have to call this method.
+        Called automatically when a :class:`~txpostgres.txpostgres.Cursor` created
+        by this :class:`~txpostgres.txpostgres.Connection` starts polling after
+        executing a query. User code should never have to call this method.
         """
         # The cursor will now proceed to poll the psycopg2 connection, so stop
         # polling it ourselves until it's done. Failure to do so would result
@@ -644,9 +645,10 @@ class Connection(_PollingMixin):
 
     def cursorFinished(self, cursor):
         """
-        Called automatically when a :class:`~txpostgres.Cursor` created by this
-        :class:`~txpostgres.Connection` is done with polling after executing a
-        query. User code should never have to call this method.
+        Called automatically when a :class:`~txpostgres.txpostgres.Cursor` created
+        by this :class:`~txpostgres.txpostgres.Connection` is done with polling
+        after executing a query. User code should never have to call this
+        method.
         """
         self._cursors.remove(cursor)
         # The cursor is done polling, resume watching the connection for NOTIFY
@@ -745,7 +747,7 @@ class Connection(_PollingMixin):
 
 class ConnectionPool(object):
     """
-    A poor man's pool of :class:`~txpostgres.Connection` instances.
+    A poor man's pool of :class:`~txpostgres.txpostgres.Connection` instances.
 
     :var min: The amount of connections that will be open when
        :meth:`.start` is called. The pool never opens or closes connections on
@@ -753,7 +755,7 @@ class ConnectionPool(object):
     :vartype min: int
 
     :var connectionFactory: The factory used to produce connections, defaults
-        to :class:`~txpostgres.Connection`.
+        to :class:`~txpostgres.txpostgres.Connection`.
     :vartype connectionFactory: any callable
 
     :var reactor: The reactor passed to :attr:`.connectionFactory`.
@@ -829,7 +831,8 @@ class ConnectionPool(object):
         pending.
 
         :param connection: The connection to be removed.
-        :type connection: an object produced by the pool's :attr:`connectionFactory`
+        :type connection: an object produced by the pool's
+            :attr:`connectionFactory`
         """
         if not self.connections:
             raise ValueError("Connection still in use")
@@ -860,11 +863,11 @@ class ConnectionPool(object):
         Execute an SQL query using a pooled connection and return the result.
 
         One of the pooled connections will be chosen, its
-        :meth:`~txpostgres.Connection.runQuery` method will be called and the
-        resulting :d:`Deferred` will be returned.
+        :meth:`~txpostgres.txpostgres.Connection.runQuery` method will be
+        called and the resulting :d:`Deferred` will be returned.
 
         :return: A :d:`Deferred` obtained by a pooled connection's
-            :meth:`~txpostgres.Connection.runQuery`
+            :meth:`~txpostgres.txpostgres.Connection.runQuery`
         """
         return self._semaphore.run(self._runQuery, *args, **kwargs)
 
@@ -878,11 +881,11 @@ class ConnectionPool(object):
         Execute an SQL query using a pooled connection and discard the result.
 
         One of the pooled connections will be chosen, its
-        :meth:`~txpostgres.Connection.runOperation` method will be called and
-        the resulting :d:`Deferred` will be returned.
+        :meth:`~txpostgres.txpostgres.Connection.runOperation` method will be
+        called and the resulting :d:`Deferred` will be returned.
 
         :return: A :d:`Deferred` obtained by a pooled connection's
-            :meth:`~txpostgres.Connection.runOperation`
+            :meth:`~txpostgres.txpostgres.Connection.runOperation`
         """
         return self._semaphore.run(self._runOperation, *args, **kwargs)
 
@@ -897,15 +900,17 @@ class ConnectionPool(object):
         result.
 
         One of the pooled connections will be chosen, its
-        :meth:`~txpostgres.Connection.runInteraction` method will be called and
-        the resulting :d:`Deferred` will be returned.
+        :meth:`~txpostgres.txpostgres.Connection.runInteraction` method will be
+        called and the resulting :d:`Deferred` will be returned.
 
         :param interaction: A callable that will be passed to
-            :meth:`Connection.runInteraction <txpostgres.Connection.runInteraction>`
+            :meth:`Connection.runInteraction
+            <txpostgres.Connection.runInteraction>`
         :type interaction: any callable
 
         :return: A :d:`Deferred` obtained by a pooled connection's
-            :meth:`Connection.runInteraction <txpostgres.Connection.runInteraction>`
+            :meth:`Connection.runInteraction
+            <txpostgres.Connection.runInteraction>`
         """
         return self._semaphore.run(
             self._runInteraction, interaction, *args, **kwargs)
