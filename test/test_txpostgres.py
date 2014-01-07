@@ -10,7 +10,7 @@ except ImportError:
     except ImportError:
         raise ImportError('no module named psycopg2 or psycopg2ct')
 
-from txpostgres import txpostgres
+from txpostgres import txpostgres, reconnection
 
 from twisted.trial import unittest
 from twisted.internet import defer, error, main, posixbase, reactor, task
@@ -451,6 +451,8 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
 
 class _SimpleDBSetupMixin(object):
 
+    connectionClass = txpostgres.Connection
+
     def setUp(self):
         d = self.restoreConnection(None)
         d.addCallback(lambda _: self.conn.cursor())
@@ -467,7 +469,7 @@ class _SimpleDBSetupMixin(object):
         been passed through. Useful as an addBoth handler for tests that
         disconnect from the database.
         """
-        self.conn = txpostgres.Connection()
+        self.conn = self.connectionClass()
         d = self.conn.connect(user=DB_USER, password=DB_PASS,
                               host=DB_HOST, database=DB_NAME)
         return d.addCallback(lambda _: res)
@@ -1460,3 +1462,68 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: self.assertEquals(
                 cooperator.result, [True]))
         return d.addCallback(lambda _: c.close())
+
+
+class SignallingDetector(reconnection.DeadConnectionDetector):
+
+    died = False
+
+    def startReconnecting(self, f):
+        self.died = True
+        return reconnection.DeadConnectionDetector.startReconnecting(self, f)
+
+
+class ReconnectingConnection(txpostgres.Connection):
+
+    def __init__(self, *args, **kwargs):
+        self.clock = task.Clock()
+
+        detector = SignallingDetector(
+            deathChecker=self.checkDataError,
+            reconnectionIterator=self.sillyIterator,
+            reactor=self.clock)
+
+        kwargs['detector'] = detector
+        txpostgres.Connection.__init__(self, *args, **kwargs)
+
+    def checkDataError(self, f):
+        return f.check(psycopg2.DataError)
+
+    def sillyIterator(self):
+        return [1, 1, 1]
+
+
+class TxPostgresReconnectionTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
+
+    connectionClass = ReconnectingConnection
+
+    def test_reconnection(self):
+        """
+        An error causing the connection to die starts the reconnection process.
+        """
+        recovery_d = defer.Deferred()
+        self.conn.detector.addRecoveryHandler(
+            lambda: recovery_d.callback(None))
+
+        d = self.conn.runOperation('insert into simple values (1)')
+        d.addCallback(lambda _: self.assertFalse(self.conn.detector.died))
+
+        # try inserting text, which will cause a DataError and cause a
+        # reconnection
+        d.addCallback(lambda _: self.conn.runOperation(
+            "insert into simple values ('sometext')"))
+        self.assertFailure(d, psycopg2.DataError)
+        d.addCallback(lambda _: self.assertTrue(self.conn.detector.died))
+
+        # the next query will fail immediately
+        d.addCallback(lambda _: self.conn.runQuery('select 1'))
+        self.assertFailure(d, reconnection.ConnectionDead)
+
+        # after the delay expires, a reconnection attempt will be triggered and
+        # the connection will recover eventually
+        d.addCallback(lambda _: self.conn.clock.advance(1))
+        d.addCallback(lambda _: recovery_d)
+
+        # now the query will no loger fail
+        d.addCallback(lambda _: self.conn.runQuery('select 1'))
+        return d.addCallback(self.assertEquals, [(1, )])
