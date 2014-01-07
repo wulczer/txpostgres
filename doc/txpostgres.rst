@@ -26,11 +26,18 @@ txpostgres.txpostgres
 
 .. autoexception:: txpostgres.txpostgres.AlreadyPolling
 
+txpostgres.reconnection
+~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autoexception:: txpostgres.AlreadyConnected
+.. autoclass:: txpostgres.reconnection.DeadConnectionDetector
 
-.. autoexception:: txpostgres.RollbackFailed
+.. autofunction:: txpostgres.reconnection.defaultDeathChecker
 
-.. autoexception:: txpostgres.UnexpectedPollResult
+.. autofunction:: txpostgres.reconnection.defaultReconnectionIterator
 
-.. autoexception:: txpostgres.AlreadyPolling
+.. autoexception:: txpostgres.reconnection.ConnectionDead
+
+txpostgres.retrying
+~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: txpostgres.retrying.RetryingCall

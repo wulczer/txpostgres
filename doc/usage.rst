@@ -71,3 +71,29 @@ the payload::
 
 .. _NOTIFY: http://www.postgresql.org/docs/current/static/sql-notify.html
 .. _psql: http://www.postgresql.org/docs/current/static/app-psql.html
+
+Automatic reconnection
+----------------------
+
+The module includes provision for automatically reconnecting to the database in
+case the connection gets broken. To use it, pass a
+:class:`~txpostgres.reconnection.DeadConnectionDetector` instance to
+:class:`~txpostgres.txpostgres.Connection`. You can customise the detector
+instance or subclass it to add custom logic. See the documentation for
+:class:`~txpostgres.reconnection.DeadConnectionDetector` for details.
+
+When a :class:`~txpostgres.txpostgres.Connection` is configured with a
+detector, it will automatically start the reconnection process whenever it
+encounters a certain class of errors indicative of a disconnect. See
+:func:`~txpostgres.reconnection.defaultDeathChecker` for more.
+
+While the connection is down, all attempts to use it will result in immediate
+failures with :exc:`~txpostgres.reconnection.ConnectionDead`. This is to
+prevent sending additional queries down a link that's known to be down.
+
+Here's an example of using automatic reconnection in txpostgres:
+
+.. literalinclude:: reconnection_example.py
+
+You can run this snippet and then try restarting the database. Logging lines
+should appear, as the connection gets automatically recovered.
