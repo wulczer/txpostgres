@@ -403,7 +403,7 @@ class Connection(_PollingMixin):
     connectionFactory = staticmethod(psycopg2.connect)
     cursorFactory = Cursor
 
-    def __init__(self, reactor=None, cooperator=None):
+    def __init__(self, reactor=None, cooperator=None, detector=None):
         if not reactor:
             from twisted.internet import reactor
         if not cooperator:
@@ -412,6 +412,7 @@ class Connection(_PollingMixin):
 
         self.reactor = reactor
         self.cooperator = cooperator
+        self.detector = detector
         self.prefix = "connection"
 
         # this lock will be used to prevent concurrent query execution
@@ -437,6 +438,9 @@ class Connection(_PollingMixin):
         :raise: :exc:`~txpostgres.txpostgres.AlreadyConnected` when the
             connection has already been opened.
         """
+        if self.detector:
+            self.detector.setReconnectable(self, *args, **kwargs)
+
         if self._connection and not self._connection.closed:
             return defer.fail(AlreadyConnected())
 
@@ -510,7 +514,7 @@ class Connection(_PollingMixin):
         :return: A :d:`Deferred` that will fire with the return value of the
             cursor's :meth:`fetchall` method.
         """
-        return self.lock.run(self._runQuery, *args, **kwargs)
+        return self._doit(self._runQuery, *args, **kwargs)
 
     def _runQuery(self, *args, **kwargs):
         c = self.cursor()
@@ -532,7 +536,7 @@ class Connection(_PollingMixin):
 
         :return: A :d:`Deferred` that will fire :class:`None`.
         """
-        return self.lock.run(self._runOperation, *args, **kwargs)
+        return self._doit(self._runOperation, *args, **kwargs)
 
     def _runOperation(self, *args, **kwargs):
         c = self.cursor()
@@ -579,8 +583,7 @@ class Connection(_PollingMixin):
         :return: A :d:`Deferred` that will fire with the return value of
             :obj:`interaction`.
         """
-        return self.lock.run(
-            self._runInteraction, interaction, *args, **kwargs)
+        return self._doit(self._runInteraction, interaction, *args, **kwargs)
 
     def _runInteraction(self, interaction, *args, **kwargs):
         c = self.cursor()
@@ -610,6 +613,13 @@ class Connection(_PollingMixin):
         d.addCallback(lambda ret: (c.close(), ret)[1])
 
         return d
+
+    def _doit(self, method, *args, **kwargs):
+        if self.detector:
+            args = (method, ) + args
+            method = self.detector.callChecking
+
+        return self.lock.run(method, *args, **kwargs)
 
     def cancel(self, d):
         """
@@ -672,6 +682,12 @@ class Connection(_PollingMixin):
         # disconnection
         if not self._connection.closed:
             self.reactor.addReader(self)
+
+    def connectionLost(self, reason):
+        _PollingMixin.connectionLost(self, reason)
+
+        if self.detector:
+            self.detector.checkForDeadConnection(reason)
 
     def checkForNotifies(self):
         """
