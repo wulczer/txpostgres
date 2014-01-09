@@ -1,3 +1,6 @@
+"""
+Reconnection support for txpostgres.
+"""
 from __future__ import absolute_import
 
 import psycopg2

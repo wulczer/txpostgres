@@ -1,3 +1,18 @@
+"""
+Simple implementation of a retrying call.
+
+This code is based on a snippet send to the twisted-python mailing list:
+
+http://twistedmatrix.com/pipermail/twisted-python/2009-November/020818.html
+
+as well as published as txretry:
+
+https://github.com/fluidinfo/txretry
+
+It has been modified to allow resetting the backoff iterator and not store a
+list of past failures.
+"""
+
 import random
 
 from twisted.internet import reactor, defer, task
