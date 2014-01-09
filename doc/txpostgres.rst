@@ -41,3 +41,5 @@ txpostgres.retrying
 ~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: txpostgres.retrying.RetryingCall
+
+.. autofunction:: txpostgres.retrying.simpleBackoffIterator

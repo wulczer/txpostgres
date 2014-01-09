@@ -24,8 +24,8 @@ def simpleBackoffIterator(initialDelay=1.0, maxDelay=3600,
                           maxRetries=10, now=True):
     """
     Yields increasing timeout values between retries of a call. The default
-    factor and jitter are taken from Twisted's :tm:`RetryingProtocol
-    <twisted.internet.protocol.RetryingProtocol>`.
+    factor and jitter are taken from Twisted's :tm:`ReconnectingClientFactory
+    <internet.protocol.ReconnectingClientFactory>`.
 
     :var initialDelay: Initial delay, in seconds.
     :vartype initialDelay: :class:`float`
@@ -82,7 +82,7 @@ class RetryingCall(object):
     back to the reactor between obtaining the delay from the iterator and
     calling the function if the iterator returns zero.
 
-    The :meth:`~resetBackoff` method replaces the backoff iterator with another
+    The :meth:`.resetBackoff` method replaces the backoff iterator with another
     one and is useful to reset the delay if some phase of the process has
     succeeded and that makes the desirable initial delay different again.
     """
@@ -132,6 +132,24 @@ class RetryingCall(object):
         self._inProgress.cancel()
 
     def start(self, backoffIterator=None, failureTester=None):
+        """
+        Start the call and retry it until it succeeds and fails.
+
+        :param backoffIterator: A zero-argument callable that should
+            return a iterator yielding reconnection delay periods. If
+            :class:`None` then :func:`.simpleBackoffIterator` will be
+            used.
+        :type backoffIterator: callable
+
+        :param failureTester: A one-argument callable that will be called with
+            a :tm:`Failure <python.failure.Failure>` instance each time the
+            function being retried fails. It should return
+            :class:`None` if the call should be retried or a
+            :tm:`Failure <python.failure.Failure>` if the retrying process should
+            be stopped. If :class:`None` is used for this parameter, retrying
+            will never stop until the backoff iterator is exhausted.
+        :type failureTester: callable
+        """
         self.resetBackoff(backoffIterator)
 
         if failureTester is None:
@@ -147,6 +165,9 @@ class RetryingCall(object):
         return self._deferred
 
     def resetBackoff(self, backoffIterator=None):
+        """
+        Replace the current backoff iterator with a new one.
+        """
         if backoffIterator is None:
             backoffIterator = simpleBackoffIterator()
         self._backoffIterator = iter(backoffIterator)

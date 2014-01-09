@@ -765,8 +765,8 @@ class ConnectionPool(object):
     A poor man's pool of :class:`~txpostgres.txpostgres.Connection` instances.
 
     :var min: The amount of connections that will be open when
-       :meth:`.start` is called. The pool never opens or closes connections on
-       its own after starting. Defaults to 3.
+        :meth:`~ConnectionPool.start` is called. The pool never opens or closes
+        connections on its own after starting. Defaults to 3.
     :vartype min: int
 
     :var connectionFactory: The factory used to produce connections, defaults

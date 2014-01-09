@@ -21,7 +21,7 @@ class ConnectionDead(Exception):
 def defaultDeathChecker(f):
     """
     Checker function suitable for use with
-    :class:`DeadConnectionDetector`.
+    :class:`.DeadConnectionDetector`.
     """
     return f.check(psycopg2.InterfaceError, psycopg2.OperationalError,
                    RollbackFailed)
@@ -49,9 +49,9 @@ class DeadConnectionDetector(object):
     connection is currently dead. This is done to prevent sending requests to a
     resource that's not currently available.
 
-    When an instance of :class:`~txpostgres.Connection` is passed a
-    :class:`DeadConnectionDetector` it automatically starts using it to provide
-    reconnection.
+    When an instance of :class:`~txpostgres.txpostgres.Connection` is passed a
+    :class:`.DeadConnectionDetector` it automatically starts using it to
+    provide reconnection.
 
     Another way of using this class is manually calling
     :meth:`.checkForDeadConnection` passing it a :tm:`Failure
