@@ -4,3 +4,5 @@ build/
 *.pyc
 _trial_temp/
 doc/_build/
+.coverage
+*,cover
