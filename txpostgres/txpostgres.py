@@ -682,7 +682,7 @@ class Connection(_PollingMixin):
         # other end of our connection, causing a fd = -1 which
         # will throw an error in the pollreactor.addReader
         if self.fileno() < 0:
-            self.connectionLost(failure.Failure(main.CONNECTION_DONE))
+            self.close()
             return
 
         # continue watching for NOTIFY events, but be careful to check the
