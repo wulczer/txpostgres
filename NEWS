@@ -1,3 +1,11 @@
+What's new in txpostgres 1.3.0
+------------------------------
+
+  - try using psycopg2cffi before falling back to psycopg2-ctypes
+    (while still prefering straingh psycopg2)
+  - allow choosing the exact psycopg2 implementation using an
+    environment variable
+
 What's new in txpostgres 1.2.0
 ------------------------------
 

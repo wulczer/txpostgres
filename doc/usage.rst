@@ -97,3 +97,29 @@ Here's an example of using automatic reconnection in txpostgres:
 
 You can run this snippet and then try restarting the database. Logging lines
 should appear, as the connection gets automatically recovered.
+
+Choosing a Psycopg implementation
+---------------------------------
+
+To use txpostgres, you will need a recent enough version of Psycopg_, namely
+2.2.0 or later. Since parts of Psycopg are written in C, it is not available
+on some Python implementations, like PyPy. When first imported, txpostgres
+will try to detect if an API-compatible implementation of Psycopg is available.
+
+You can force a certain implementation to be used by exporing an environment
+variable `TXPOSTGRES_PSYCOPG_IMPL`. Recognized values are:
+
+psycopg2
+  Force using Psycopg_, do not try any fallbacks.
+
+psycopg2cffi
+  Use psycopg2cffi_, a psycopg2 implementation based on cffi, known to work on
+  PyPy.
+
+psycopg2ct
+  Use psycopg2ct_, an older psycopg2 implementation using ctypes, also
+  compatible with PyPy.
+
+.. _Psycopg: http://initd.org/psycopg/
+.. _psycopg2cffi: https://github.com/chtd/psycopg2cffi
+.. _psycopg2ct: https://github.com/mvantellingen/psycopg2-ctypes

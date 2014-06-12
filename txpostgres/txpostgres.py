@@ -40,20 +40,14 @@ documentation_
 .. _issue tracker: https://github.com/wulczer/txpostgres/issues
 .. _documentation: http://txpostgres.readthedocs.org/
 """
-
-try:
-    import psycopg2
-except ImportError:
-    # try psycopg2-ctypes
-    try:
-        import psycopg2ct as psycopg2
-    except ImportError:
-        raise ImportError('no module named psycopg2 or psycopg2ct')
+from __future__ import absolute_import
 
 from zope.interface import implements
 
 from twisted.internet import interfaces, main, defer, task
 from twisted.python import failure, log
+
+from txpostgres.psycopg2_impl import psycopg2
 
 try:
     psycopg2.extensions.POLL_OK

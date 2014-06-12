@@ -3,12 +3,11 @@ Reconnection support for txpostgres.
 """
 from __future__ import absolute_import
 
-import psycopg2
-
 from twisted.internet import defer
 from twisted.python import log
 
 from txpostgres import retrying
+from txpostgres.psycopg2_impl import psycopg2
 from txpostgres.txpostgres import RollbackFailed
 
 

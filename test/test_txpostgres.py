@@ -1,15 +1,8 @@
+from __future__ import absolute_import
+
 import os
 
-try:
-    import psycopg2
-    import psycopg2.extensions
-except ImportError:
-    # try psycopg2-ctypes
-    try:
-        import psycopg2ct as psycopg2
-    except ImportError:
-        raise ImportError('no module named psycopg2 or psycopg2ct')
-
+from txpostgres.psycopg2_impl import psycopg2
 from txpostgres import txpostgres, reconnection
 
 from twisted.trial import unittest
