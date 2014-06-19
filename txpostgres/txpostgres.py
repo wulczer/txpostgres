@@ -696,7 +696,9 @@ class Connection(_PollingMixin):
 
     def _checkForNotifies(self):
         while self._connection.notifies:
-            notify = self._connection.notifies.pop()
+            # pop from front of list so order is maintained in calling
+            # handlers for notifications
+            notify = self._connection.notifies.pop(0)
             # don't iterate over self._notifyObservers directly because the
             # observer function might call removeNotifyObserver, thus modifying
             # the set while it's being iterated
