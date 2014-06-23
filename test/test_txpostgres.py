@@ -1278,6 +1278,43 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         return d.addCallback(lambda _: self.assertEquals(
                 len(self.notifies), 3))
 
+    def test_notifyDeliveryOrder(self):
+        """
+        Notifications are delivered to observers in the same order that they
+        were sent.
+        """
+        # this tests accesses NOTIFY payloads, so it requires PostgreSQL 9.0+
+        # and Psycopg 2.3+
+        if self.conn.server_version < 90000:
+            raise unittest.SkipTest(
+                "PostgreSQL < 9.0.0 does not support NOTIFY payloads")
+
+        if getattr(psycopg2.extensions.Notify, 'payload', None) is None:
+            raise unittest.SkipTest(
+                "psycopg2 does not have NOTIFY payload support. You need at "
+                "least version 2.3.0 of psycopg2 to process NOTIFY payloads.")
+
+        dl = [defer.Deferred() for _ in range(10)]
+        payloads = map(str, range(10))
+        notifyD = defer.DeferredList(dl)
+
+        def observer(notify):
+            self.notifies.append(notify)
+            dl.pop().callback(None)
+
+        self.conn.addNotifyObserver(observer)
+
+        d = self.conn.runOperation("listen txpostgres_test")
+        # send all notification together to ensure that they are processed
+        # inside a single checkForNotifies call
+        d.addCallback(lambda _: self.notifyconn.runOperation(
+            'notify txpostgres_test, %s; ' * 10, payloads))
+        # wait for all notification to be processed
+        d.addCallback(lambda _: notifyD)
+        # check that they were processed in the right order
+        return d.addCallback(lambda _: self.assertEquals(
+                [n.payload for n in self.notifies], payloads))
+
     def test_multipleObservers(self):
         """
         Multiple registered notify observers each get notified.

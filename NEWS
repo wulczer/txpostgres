@@ -5,6 +5,8 @@ What's new in txpostgres 1.3.0
     (while still prefering straingh psycopg2)
   - allow choosing the exact psycopg2 implementation using an
     environment variable
+  - NOTIFY events are now processed in reception order (thanks to
+    Max Walton)
 
 What's new in txpostgres 1.2.0
 ------------------------------
