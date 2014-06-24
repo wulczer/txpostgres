@@ -5,8 +5,8 @@ PostgreSQL C library.
 
 It requires a version of Psycopg that includes support for `asynchronous
 connections`_ (versions 2.2.0 and later) and a reasonably recent Twisted (it
-has been tested with Twisted 10.2 onward). Alternatively, psycopg2-ctypes_ can
-be used in lieu of Psycopg.
+has been tested with Twisted 10.2 onward). Alternatively, psycopg2cffi_ or
+psycopg2-ctypes_ can be used in lieu of Psycopg.
 
 txpostgres tries to present an interface that will be familiar to users of both
 Twisted and Psycopg. It features a Cursor_ wrapper class that mimics the
@@ -43,6 +43,7 @@ documentation_
 .. _Python: http://www.python.org/
 .. _libpq: http://www.postgresql.org/docs/current/static/libpq-async.html
 .. _`asynchronous connections`: http://initd.org/psycopg/docs/advanced.html#async-support
+.. _psycopg2cffi: https://github.com/chtd/psycopg2cffi
 .. _psycopg2-ctypes: http://pypi.python.org/pypi/psycopg2ct
 .. _Cursor: http://wulczer.github.com/txpostgres/txpostgres.html#txpostgres.Cursor
 .. _Psycopg cursor: http://initd.org/psycopg/docs/cursor.html#cursor
