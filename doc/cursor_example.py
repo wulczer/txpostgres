@@ -11,6 +11,7 @@ query = 'select tablename from pg_tables order by tablename'
 conn = txpostgres.Connection()
 d = conn.connect('dbname=postgres')
 
+
 def useCursor(cur):
     # execute a query
     d = cur.execute(query)

@@ -145,9 +145,9 @@ class RetryingCall(object):
             a :tm:`Failure <python.failure.Failure>` instance each time the
             function being retried fails. It should return
             :class:`None` if the call should be retried or a
-            :tm:`Failure <python.failure.Failure>` if the retrying process should
-            be stopped. If :class:`None` is used for this parameter, retrying
-            will never stop until the backoff iterator is exhausted.
+            :tm:`Failure <python.failure.Failure>` if the retrying process
+            should be stopped. If :class:`None` is used for this parameter,
+            retrying will never stop until the backoff iterator is exhausted.
         :type failureTester: callable
         """
         self.resetBackoff(backoffIterator)

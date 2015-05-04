@@ -88,11 +88,12 @@ class DeadConnectionDetector(object):
             used.
         :type reconnectionIterator: callable
 
-        :param reactor: A Twisted reactor or :class:`None`, which means the current
-            reactor.
+        :param reactor: A Twisted reactor or :class:`None`, which means
+            the current reactor.
         """
         self.deathChecker = deathChecker or defaultDeathChecker
-        self.reconnectionIterator = reconnectionIterator or defaultReconnectionIterator
+        self.reconnectionIterator = (reconnectionIterator or
+                                     defaultReconnectionIterator)
 
         if not reactor:
             from twisted.internet import reactor
@@ -129,8 +130,9 @@ class DeadConnectionDetector(object):
 
     def checkForDeadConnection(self, f):
         """
-        Get passed a :tm:`Failure <python.failure.Failure>` instance and determine
-        if it means that the connection is dead. If so, start reconnecting.
+        Get passed a :tm:`Failure <python.failure.Failure>` instance and
+        determine if it means that the connection is dead. If so, start
+        reconnecting.
         """
         # if the error does not indicate that the connection is dead, just
         # return the failure
@@ -209,8 +211,8 @@ class DeadConnectionDetector(object):
 
     def removeRecoveryHandler(self, handler):
         """
-        Remove a previously added recovery handler. Removing a handler that's never
-        been added will be ignored.
+        Remove a previously added recovery handler. Removing a handler that's
+        never been added will be ignored.
 
         :param handler: A callable that should no longer be called when the
             connection recovers.

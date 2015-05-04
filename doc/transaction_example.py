@@ -7,8 +7,11 @@ from twisted.python import log
 conn = txpostgres.Connection()
 d = conn.connect('dbname=postgres')
 
-# define a callable that will execute inside a transaction
+
 def interaction(cur):
+    """
+    A callable that will execute inside a transaction.
+    """
     # the parameter is a txpostgres Cursor
     d = cur.execute('create table test(x integer)')
     d.addCallback(lambda _: cur.execute('insert into test values (%s)', (1, )))

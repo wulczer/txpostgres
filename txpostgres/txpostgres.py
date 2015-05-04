@@ -14,12 +14,13 @@ has been tested with Twisted 10.2 onward). Alternatively, psycopg2cffi_ or
 psycopg2-ctypes_ can be used in lieu of Psycopg.
 
 txpostgres tries to present an interface that will be familiar to users of both
-Twisted and Psycopg. It features a :class:`~txpostgres.txpostgres.Cursor` wrapper class
-that mimics the interface of a Psycopg :psycopg:`cursor <cursor.html#cursor>`
-but returns :d:`Deferred` objects. It also provides a
-:class:`~txpostgres.txpostgres.Connection` class that is meant to be a drop-in replacement
-for Twisted's :tm:`adbapi.Connection <enterprise.adbapi.Connection>` with some
-small differences regarding connection establishing.
+Twisted and Psycopg. It features a :class:`~txpostgres.txpostgres.Cursor`
+wrapper class that mimics the interface of a Psycopg :psycopg:`cursor
+<cursor.html#cursor>` but returns :d:`Deferred` objects. It also provides a
+:class:`~txpostgres.txpostgres.Connection` class that is meant to be a drop-in
+replacement for Twisted's :tm:`adbapi.Connection
+<enterprise.adbapi.Connection>` with some small differences regarding
+connection establishing.
 
 The main advantage of txpostgres over Twisted's built-in database support is
 non-blocking connection building and complete lack of thread usage.
@@ -34,7 +35,8 @@ documentation_
 .. _Psycopg: http://initd.org/psycopg/
 .. _Python: http://www.python.org/
 .. _libpq: http://www.postgresql.org/docs/current/static/libpq-async.html
-.. _`asynchronous connections`: http://initd.org/psycopg/docs/advanced.html#async-support
+.. _`asynchronous connections`:
+    http://initd.org/psycopg/docs/advanced.html#async-support
 .. _psycopg2cffi: https://github.com/chtd/psycopg2cffi
 .. _psycopg2-ctypes: http://pypi.python.org/pypi/psycopg2ct
 .. _source: https://github.com/wulczer/txpostgres
@@ -55,9 +57,9 @@ try:
 except AttributeError:
     import warnings
     warnings.warn(RuntimeWarning(
-            "psycopg2 does not have async support. "
-            "You need at least version 2.2.0 of psycopg2 "
-            "to use txpostgres."))
+        "psycopg2 does not have async support. "
+        "You need at least version 2.2.0 of psycopg2 "
+        "to use txpostgres."))
 
 
 __all__ = ['Connection', 'Cursor', 'ConnectionPool', '_PollingMixin',
@@ -180,7 +182,8 @@ class _PollingMixin(object):
             else:
                 if self._pollingD:
                     d, self._pollingD = self._pollingD, None
-                    self.reactor.callLater(0, d.errback, UnexpectedPollResult())
+                    self.reactor.callLater(
+                        0, d.errback, UnexpectedPollResult())
                 elif not swallowErrors:
                     # no one to report the error to
                     raise UnexpectedPollResult()
@@ -635,9 +638,10 @@ class Connection(_PollingMixin):
 
     def cursorRunning(self, cursor):
         """
-        Called automatically when a :class:`~txpostgres.txpostgres.Cursor` created
-        by this :class:`~txpostgres.txpostgres.Connection` starts polling after
-        executing a query. User code should never have to call this method.
+        Called automatically when a :class:`~txpostgres.txpostgres.Cursor`
+        created by this :class:`~txpostgres.txpostgres.Connection` starts
+        polling after executing a query. User code should never have to call
+        this method.
         """
         # The cursor will now proceed to poll the psycopg2 connection, so stop
         # polling it ourselves until it's done. Failure to do so would result
@@ -649,10 +653,10 @@ class Connection(_PollingMixin):
 
     def cursorFinished(self, cursor):
         """
-        Called automatically when a :class:`~txpostgres.txpostgres.Cursor` created
-        by this :class:`~txpostgres.txpostgres.Connection` is done with polling
-        after executing a query. User code should never have to call this
-        method.
+        Called automatically when a :class:`~txpostgres.txpostgres.Cursor`
+        created by this :class:`~txpostgres.txpostgres.Connection` is done with
+        polling after executing a query. User code should never have to call
+        this method.
         """
         self._cursors.remove(cursor)
         # The cursor is done polling, resume watching the connection for NOTIFY
@@ -818,7 +822,7 @@ class ConnectionPool(object):
         # use DeferredList here, as gatherResults only got a consumeErrors
         # keyword argument in Twisted 11.1.0
         d = defer.DeferredList([c.connect(*self.connargs, **self.connkw)
-                                 for c in self.connections],
+                                for c in self.connections],
                                fireOnOneErrback=True, consumeErrors=True)
         return d.addCallback(lambda _: self)
 
@@ -858,8 +862,8 @@ class ConnectionPool(object):
         Provided to be able to extend the pool with new connections.
 
         :param connection: The connection to be added.
-        :type connection: an object compatible with those produced by the pool's
-            :attr:`connectionFactory`
+        :type connection: an object compatible with those produced
+            by the pool's :attr:`connectionFactory`
         """
         self.connections.add(connection)
         self._semaphore.limit += 1

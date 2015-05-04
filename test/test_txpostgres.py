@@ -219,8 +219,8 @@ class TxPostgresPollingMixinTestCase(Psycopg2TestCase):
          * a NOTIFY comes through and doRead is triggered
          * not all data is read from the socket and it remains readable
          * the connection is closed and the Deferred returned from poll()
-           called inside doRead is errbacked without being ever available to user
-           code
+           called inside doRead is errbacked without being ever available to
+           user code
 
         It has been reported that under heavy load this can happen.
         """
@@ -317,14 +317,14 @@ class TxPostgresConnectionTestCase(Psycopg2TestCase):
                          host=DB_HOST, database=DB_NAME)
 
         d.addCallback(lambda c: conn.connect(
-                user=DB_USER, password=DB_PASS,
-                host=DB_HOST, database=DB_NAME))
+            user=DB_USER, password=DB_PASS,
+            host=DB_HOST, database=DB_NAME))
         d = self.failUnlessFailure(d, txpostgres.AlreadyConnected)
 
         d.addCallback(lambda _: conn.close())
         d.addCallback(lambda _: conn.connect(
-                user=DB_USER, password=DB_PASS,
-                host=DB_HOST, database=DB_NAME))
+            user=DB_USER, password=DB_PASS,
+            host=DB_HOST, database=DB_NAME))
         return d.addCallback(lambda c: c.close())
 
     def test_errors(self):
@@ -603,11 +603,11 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(self.assertEquals, [(0, )])
 
         d.addCallback(lambda _: self.conn.runOperation(
-                "insert into simple values (%s)", (1, )))
+            "insert into simple values (%s)", (1, )))
         d.addCallback(self.assertIdentical, None)
 
         d.addCallback(lambda _: self.conn.runQuery(
-                    "select count(*) from simple"))
+            "select count(*) from simple"))
         return d.addCallback(self.assertEquals, [(1, )])
 
     def test_runSimpleInteraction(self):
@@ -629,7 +629,7 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(self.assertEquals, "interaction done")
 
         d.addCallback(lambda _: self.conn.runQuery(
-                "select * from simple order by x"))
+            "select * from simple order by x"))
         return d.addCallback(self.assertEquals, [(1, ), (2, )])
 
     def test_runErrorInteraction(self):
@@ -646,7 +646,7 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d = self.assertFailure(d, psycopg2.ProgrammingError)
 
         d.addCallback(lambda _: self.conn.runQuery(
-                "select count(*) from simple"))
+            "select count(*) from simple"))
         return d.addCallback(self.assertEquals, [(0, )])
 
     def test_errorOnRollback(self):
@@ -708,7 +708,7 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         # added correct terminated connection handling. Then only way to know
         # that seems to be looking at the __version__ string.
         if (getattr(psycopg2, '_impl', None) and
-            'ctypes' not in psycopg2.__version__):
+                'ctypes' not in psycopg2.__version__):
             raise unittest.SkipTest(
                 "This test fails on versions of psycopg2ct 0.3 and older, "
                 "which have a bug in terminated connection handling")
@@ -897,14 +897,14 @@ class TxPostgresConnectionPoolTestCase(Psycopg2TestCase):
         d = self.pool.runOperation("create table x (i int)")
         # give is a workout, 20 x the number of connections
         d.addCallback(lambda _: defer.gatherResults(
-                [self.pool.runOperation("insert into x values (%s)", (i, ))
-                 for i in range(self.pool.min * 20)]))
+            [self.pool.runOperation("insert into x values (%s)", (i, ))
+             for i in range(self.pool.min * 20)]))
         d.addCallback(lambda _: self.pool.runQuery(
-                "select * from x order by i"))
+            "select * from x order by i"))
         d.addCallback(self.assertEquals, [(i, ) for i in
-                                         range(self.pool.min * 20)])
+                                          range(self.pool.min * 20)])
         return d.addCallback(lambda _: self.pool.runOperation(
-                "drop table x"))
+            "drop table x"))
 
     def test_interaction(self):
         """
@@ -998,7 +998,7 @@ class TxPostgresConnectionPoolHotswappingTestCase(Psycopg2TestCase):
         d.addErrback(checkErrorAndHotswap)
 
         d.addCallback(lambda _: defer.gatherResults([
-                    pool.runQuery("select 1") for _ in range(3)]))
+            pool.runQuery("select 1") for __ in range(3)]))
         d.addCallback(self.assertEquals, [[(1, )]] * 3)
         return d.addCallback(lambda _: pool.close())
 
@@ -1111,7 +1111,7 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d = self.conn.runInteraction(interaction)
         d = self.failUnlessFailure(d, defer.CancelledError)
         d.addCallback(lambda _: self.conn.runQuery(
-                "select * from simple"))
+            "select * from simple"))
         return d.addCallback(self.assertEquals, [])
 
     def test_cancelMultipleQueries(self):
@@ -1158,6 +1158,7 @@ class TxPostgresNotifyObserversTestCase(Psycopg2TestCase):
 
         def observer1(notify):
             pass
+
         def observer2(notify):
             pass
 
@@ -1210,11 +1211,12 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: notifyD)
         d.addCallback(lambda _: self.assertEquals(len(self.notifies), 1))
         return d.addCallback(lambda _: self.assertEquals(
-                self.notifies[0][1], "txpostgres_test"))
+            self.notifies[0][1], "txpostgres_test"))
 
     def test_simpleNotifySameConnection(self):
         """
-        Notifications sent from the listening session are delivered to the session.
+        Notifications sent from the listening session are delivered to the
+        session.
         """
         notifyD = defer.Deferred()
 
@@ -1230,7 +1232,7 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: notifyD)
         d.addCallback(lambda _: self.assertEquals(len(self.notifies), 1))
         return d.addCallback(lambda _: self.assertEquals(
-                self.notifies[0][1], "txpostgres_test"))
+            self.notifies[0][1], "txpostgres_test"))
 
     def test_listenUnlisten(self):
         """
@@ -1249,13 +1251,13 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: notifyD)
         d.addCallback(lambda _: self.assertEquals(len(self.notifies), 1))
         d.addCallback(lambda _: self.conn.runOperation(
-                "unlisten txpostgres_test"))
+            "unlisten txpostgres_test"))
         d.addCallback(lambda _: self.sendNotify())
         # run a query to force the reactor to spin and flush eventual pending
         # notifications, which there should be none since we did unlisten
         d.addCallback(lambda _: self.conn.runOperation("select 1"))
         return d.addCallback(lambda _: self.assertEquals(
-                len(self.notifies), 1))
+            len(self.notifies), 1))
 
     def test_multipleNotifies(self):
         """
@@ -1276,7 +1278,7 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: self.sendNotify())
         d.addCallback(lambda _: notifyD)
         return d.addCallback(lambda _: self.assertEquals(
-                len(self.notifies), 3))
+            len(self.notifies), 3))
 
     def test_notifyDeliveryOrder(self):
         """
@@ -1313,7 +1315,7 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: notifyD)
         # check that they were processed in the right order
         return d.addCallback(lambda _: self.assertEquals(
-                [n.payload for n in self.notifies], payloads))
+            [n.payload for n in self.notifies], payloads))
 
     def test_multipleObservers(self):
         """
@@ -1342,7 +1344,7 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: firstNotifyD)
         # the order is not determined though
         d.addCallback(lambda _: self.assertEquals(
-                set(self.notifies), set([1, 2])))
+            set(self.notifies), set([1, 2])))
         d.addCallback(lambda _: self.conn.removeNotifyObserver(observer2))
         d.addCallback(lambda _: self.sendNotify())
         d.addCallback(lambda _: secondNotifyD)
@@ -1380,9 +1382,9 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: self.sendNotify())
         d.addCallback(lambda _: notifyD)
         d.addCallback(lambda _: self.assertEquals(
-                len(self.flushLoggedErrors(RuntimeError)), 1))
+            len(self.flushLoggedErrors(RuntimeError)), 1))
         return d.addCallback(lambda _: self.assertEquals(
-                self.notifies, [1, 1]))
+            self.notifies, [1, 1]))
 
     def test_observerReturnsDeferred(self):
         """
@@ -1424,7 +1426,7 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: fireAllObserverDs())
         # both observers should now be called
         return d.addCallback(lambda _: self.assertEquals(
-                len(self.notifies), 2))
+            len(self.notifies), 2))
 
     def test_observerReturnsFailingDeferred(self):
         """
@@ -1455,9 +1457,9 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: notifyD)
         # both errors get logged
         d.addCallback(lambda _: self.assertEquals(
-                len(self.flushLoggedErrors(RuntimeError)), 2))
+            len(self.flushLoggedErrors(RuntimeError)), 2))
         return d.addCallback(lambda _: self.assertEquals(
-                self.notifies, [1, 1]))
+            self.notifies, [1, 1]))
 
     def test_customNotifyCooperator(self):
         """
@@ -1490,7 +1492,7 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d.addCallback(lambda _: self.sendNotify())
         d.addCallback(lambda _: cooperateD)
         d.addCallback(lambda _: self.assertEquals(
-                cooperator.result, [True]))
+            cooperator.result, [True]))
         return d.addCallback(lambda _: c.close())
 
 
