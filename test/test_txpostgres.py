@@ -700,7 +700,7 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         """
         # this tests uses pg_terminate_backend, so it only works on PostgreSQL
         # 8.4+ and if the user running the tests is a superuser.
-        if self.conn.server_version < 84000:
+        if self.conn.server_version < 80400:
             raise unittest.SkipTest(
                 "PostgreSQL < 8.4.0 does not have pg_terminate_backend")
 
