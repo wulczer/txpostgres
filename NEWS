@@ -9,6 +9,8 @@ What's new in txpostgres 1.3.0
     Max Walton)
   - tests are more robust and adapted to work on recent
     Postgres versions
+  - cursors provided in runInteraction are now always closed
+    automatically (thanks to Willi Schinmeyer)
 
 What's new in txpostgres 1.2.0
 ------------------------------

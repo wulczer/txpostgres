@@ -643,7 +643,10 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         Interactions that produce errors are rolled back and the correct error
         is reported.
         """
+        keepCursor = []
+
         def interaction(c):
+            keepCursor.append(c)
             d = c.execute("insert into simple values (1)")
             return d.addCallback(
                 lambda c: c.execute("select * from nope_not_here"))
@@ -651,6 +654,7 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         d = self.conn.runInteraction(interaction)
         d = self.assertFailure(d, psycopg2.ProgrammingError)
 
+        d.addCallback(lambda _: self.assertTrue(keepCursor[0].closed))
         d.addCallback(lambda _: self.conn.runQuery(
             "select count(*) from simple"))
         return d.addCallback(self.assertEquals, [(0, )])
@@ -661,7 +665,10 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         L{txpostgres.RollbackFailed} failure that has references to the faulty
         connection and the original failure that cause all that trouble.
         """
+        keepCursor = []
+
         def interaction(c):
+            keepCursor.append(c)
             d = c.execute("insert into simple values (1)")
             return d.addCallback(
                 lambda c: c.execute("select * from nope_not_here"))
@@ -684,6 +691,7 @@ class TxPostgresQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
             errors = self.flushLoggedErrors()
             self.assertEquals(len(errors), 1)
             self.assertEquals(errors[0].value.args[0], "boom")
+            self.assertTrue(keepCursor[0].closed)
             # restore or we won't be able to clean up the mess
             mp.restore()
         d.addErrback(checkError)

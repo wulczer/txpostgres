@@ -571,6 +571,9 @@ class Connection(_PollingMixin):
         just close it, because an open transaction might have been left open in
         the database.
 
+        Regardless of the result of :obj:`interaction`, the provided
+        :class:`~txpostgres.txpostgres.Cursor` will be automatically closed.
+
         It is safe to call this method multiple times without waiting for the
         first query to complete.
 
@@ -603,12 +606,20 @@ class Connection(_PollingMixin):
 
             # if rollback failed panic
             e.addErrback(justPanic)
-            # reraise the original failure afterwards
+            # otherwise reraise the original failure
             return e.addCallback(lambda _: f)
+
+        def closeCursorAndPassthrough(ret, cursor):
+            try:
+                cursor.close()
+            except:
+                log.err()
+
+            return ret
 
         d.addCallback(commitAndPassthrough, c)
         d.addErrback(rollbackAndPassthrough, c)
-        d.addCallback(lambda ret: (c.close(), ret)[1])
+        d.addBoth(closeCursorAndPassthrough, c)
 
         return d
 
