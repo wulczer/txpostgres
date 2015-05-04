@@ -1073,9 +1073,13 @@ class TxPostgresCancellationTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
             return task.deferLater(reactor, interval, checkActivity, remaining)
 
         def checkActivity(remaining):
-            d = self.extra.runQuery("select current_query like '%%pg_sleep%%' "
-                                    "from pg_stat_activity where procpid = %s",
-                                    (self.conn.get_backend_pid(), ))
+            cols = {'query_col': 'current_query', 'pid_col': 'procpid'}
+            if self.conn.server_version >= 90200:
+                cols = {'query_col': 'query', 'pid_col': 'pid'}
+
+            sql = ("select %(query_col)s like '%%%%pg_sleep%%%%' "
+                   "from pg_stat_activity where %(pid_col)s = %%s") % cols
+            d = self.extra.runQuery(sql, (self.conn.get_backend_pid(), ))
             return d.addCallback(gotResult, remaining - 1)
 
         return checkActivity(initial_remaining)
