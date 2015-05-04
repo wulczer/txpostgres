@@ -161,7 +161,7 @@ class DeadConnectionDetector(object):
         d = rc.start(self.reconnectionIterator())
         d.addCallback(lambda _: self.connectionRecovered())
         # the reconnection should never fail (it doesn't with the default
-        # iterator), but buggy recovery handlers and custom iterators migh
+        # iterator), but buggy recovery handlers and custom iterators might
         # cause that, so just log the error and swallow it
         d.addErrback(log.err)
 
