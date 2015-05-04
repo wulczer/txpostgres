@@ -449,7 +449,7 @@ class _SimpleDBSetupMixin(object):
     def setUp(self):
         d = self.restoreConnection(None)
         d.addCallback(lambda _: self.conn.cursor())
-        return d.addCallback(lambda c: c.execute(simple_table_schema))
+        return d.addCallback(self.createInitialSchema)
 
     def tearDown(self):
         c = self.conn.cursor()
@@ -466,6 +466,12 @@ class _SimpleDBSetupMixin(object):
         d = self.conn.connect(user=DB_USER, password=DB_PASS,
                               host=DB_HOST, database=DB_NAME)
         return d.addCallback(lambda _: res)
+
+    def createInitialSchema(self, c):
+        d = defer.succeed(None)
+        if self.conn.server_version > 80200:
+            d.addCallback(lambda _: c.execute("drop table if exists simple"))
+        return d.addCallback(lambda _: c.execute(simple_table_schema))
 
 
 class TxPostgresManualQueryTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
