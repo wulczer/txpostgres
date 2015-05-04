@@ -12,7 +12,7 @@ from twisted.python import failure
 simple_table_schema = "CREATE TABLE simple (x integer)"
 
 DB_NAME = os.getenv("TXPOSTGRES_TEST_DATABASE", "twisted_test")
-DB_HOST = os.getenv("TXPOSTGRES_TEST_HOST", "localhost")
+DB_HOST = os.getenv("TXPOSTGRES_TEST_HOST", "127.0.0.1")
 DB_USER = os.getenv("TXPOSTGRES_TEST_USER", "twisted_test")
 DB_PASS = os.getenv("TXPOSTGRES_TEST_PASSWORD", "twisted_test")
 

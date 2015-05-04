@@ -7,6 +7,8 @@ What's new in txpostgres 1.3.0
     environment variable
   - NOTIFY events are now processed in reception order (thanks to
     Max Walton)
+  - tests are more robust and adapted to work on recent
+    Postgres versions
 
 What's new in txpostgres 1.2.0
 ------------------------------
