@@ -566,7 +566,7 @@ class Connection(_PollingMixin):
         :exc:`~txpostgres.txpostgres.RollbackFailed` failure will be
         returned. The returned failure will contain references to the original
         failure that caused the transaction to be rolled back and to the
-        :class:`~txpostgres.txpostgres.Connection` in which that happend, so
+        :class:`~txpostgres.txpostgres.Connection` in which that happened, so
         the user can take a decision whether she still wants to be using it or
         just close it, because an open transaction might have been left open in
         the database.
@@ -635,7 +635,7 @@ class Connection(_PollingMixin):
         Cancel the current operation. The cancellation does not happen
         immediately, because the PostgreSQL protocol requires that the
         application waits for confirmation after the query has been cancelled.
-        Be carefil when cancelling an interaction, because if the interaction
+        Be careful when cancelling an interaction, because if the interaction
         includes sending multiple queries to the database server, you can't
         really be sure which one are you cancelling.
 
