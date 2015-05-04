@@ -517,8 +517,7 @@ class Connection(_PollingMixin):
     def _runQuery(self, *args, **kwargs):
         c = self.cursor()
         d = c.execute(*args, **kwargs)
-        d.addCallback(lambda c: c.fetchall())
-        return d.addCallback(lambda ret: (c.close(), ret)[1])
+        return d.addCallback(lambda c: c.fetchall())
 
     def runOperation(self, *args, **kwargs):
         """
@@ -539,8 +538,7 @@ class Connection(_PollingMixin):
     def _runOperation(self, *args, **kwargs):
         c = self.cursor()
         d = c.execute(*args, **kwargs)
-        d.addCallback(lambda _: None)
-        return d.addCallback(lambda ret: (c.close(), ret)[1])
+        return d.addCallback(lambda _: None)
 
     def runInteraction(self, interaction, *args, **kwargs):
         """
@@ -551,7 +549,8 @@ class Connection(_PollingMixin):
         :obj:`interaction` a new transaction will be started, so the callable
         can assume to be running all its commands in a transaction. If
         :obj:`interaction` returns a :d:`Deferred` processing will wait for it
-        to fire before proceeding.
+        to fire before proceeding. You should not close the provided
+        :class:`~txpostgres.txpostgres.Cursor`.
 
         After :obj:`interaction` finishes work the transaction will be
         automatically committed. If it raises an exception or returns a
@@ -570,9 +569,6 @@ class Connection(_PollingMixin):
         the user can take a decision whether she still wants to be using it or
         just close it, because an open transaction might have been left open in
         the database.
-
-        Regardless of the result of :obj:`interaction`, the provided
-        :class:`~txpostgres.txpostgres.Cursor` will be automatically closed.
 
         It is safe to call this method multiple times without waiting for the
         first query to complete.
@@ -609,17 +605,8 @@ class Connection(_PollingMixin):
             # otherwise reraise the original failure
             return e.addCallback(lambda _: f)
 
-        def closeCursorAndPassthrough(ret, cursor):
-            try:
-                cursor.close()
-            except:
-                log.err()
-
-            return ret
-
         d.addCallback(commitAndPassthrough, c)
         d.addErrback(rollbackAndPassthrough, c)
-        d.addBoth(closeCursorAndPassthrough, c)
 
         return d
 
