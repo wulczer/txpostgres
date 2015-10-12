@@ -697,7 +697,9 @@ class Connection(_PollingMixin):
             self.cooperator.cooperate(self._checkForNotifies())
 
     def _checkForNotifies(self):
-        for notify in self._connection.notifies:
+        notifies = self._connection.notifies[:]
+        del self._connection.notifies[:]
+        for notify in notifies:
             # don't iterate over self._notifyObservers directly because the
             # observer function might call removeNotifyObserver, thus modifying
             # the set while it's being iterated
@@ -708,8 +710,6 @@ class Connection(_PollingMixin):
                 # that would stop the cooperator from processing remaining
                 # observers
                 yield defer.maybeDeferred(observer, notify).addErrback(log.err)
-
-        del self._connection.notifies[:]
 
     def addNotifyObserver(self, observer):
         """

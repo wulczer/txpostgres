@@ -1505,6 +1505,36 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
             cooperator.result, [True]))
         return d.addCallback(lambda _: c.close())
 
+    def test_notifyWithSubsequentQuery(self):
+        """
+        When observer functions run their own queries, notifications are still
+        delivered only once.
+        """
+        dl = [defer.Deferred() for _ in range(10)]
+        payloads = map(str, range(10))
+        notifyD = defer.DeferredList(dl)
+
+        def observer(notify):
+            self.notifies.append(notify)
+            # run a query from inside of the observer function, to make
+            # psycopg2 re-read pending notifications from the connection socket
+            d = dl.pop()
+            return self.conn.runOperation("select 1").addCallback(d.callback)
+
+        self.conn.addNotifyObserver(observer)
+
+        d = self.conn.runOperation("listen txpostgres_test")
+        # send all notification together to ensure that they are processed
+        # inside a single checkForNotifies call
+        d.addCallback(lambda _: self.notifyconn.runOperation(
+            "notify txpostgres_test, %s; " * 10, payloads))
+        # wait for all notification to be processed
+        d.addCallback(lambda _: notifyD)
+        # check that the number of received notifications is equal to the
+        # number of the ones that were sent
+        return d.addCallback(lambda _: self.assertEquals(
+            len(self.notifies), len(payloads)))
+
 
 class SignallingDetector(reconnection.DeadConnectionDetector):
 
