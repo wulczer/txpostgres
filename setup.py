@@ -33,7 +33,7 @@ setup(name="txpostgres",
       description="Twisted wrapper for asynchronous PostgreSQL connections",
       long_description=__doc__,
       classifiers=[
-          "Development Status :: 4 - Beta",
+          "Development Status :: 5 - Production/Stable",
           "Environment :: Console",
           "Framework :: Twisted",
           "Intended Audience :: Developers",
