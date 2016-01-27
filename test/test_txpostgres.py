@@ -27,7 +27,7 @@ def getSkipForPsycopg2():
     try:
         psycopg2.connect(user=DB_USER, password=DB_PASS,
                          host=DB_HOST, database=DB_NAME).close()
-    except psycopg2.Error, e:
+    except psycopg2.Error as e:
         return ("cannot connect to test database %r "
                 "using host %r, user %r and password %r: %s" %
                 (DB_NAME, DB_HOST, DB_USER, DB_PASS, e))
