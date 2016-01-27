@@ -37,10 +37,8 @@ matrix:
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=select
     - python: 3.5
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=poll
-      # the Travis builder complains about running trial --reactor=default
-      # on Py3k, so disable it and use epoll explicitly
     - python: 3.5
-      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=default
+      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=epoll
     - python: 3.5
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
 
@@ -68,7 +66,8 @@ install:
 before_script:
   - psql -U postgres -c 'create database twisted_test'
 
-script: trial --reactor=$REACTOR test
+# in Travis, the Python 3.5 Twisted install doesn't work with --reactor=XXX, so just run plain `trial test`
+script: test "$TRAVIS_PYTHON_VERSION" != "3.5" && trial --reactor=$REACTOR test || trial test
 
 notifications:
   email:
