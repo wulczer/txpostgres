@@ -1307,7 +1307,7 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
                 "least version 2.3.0 of psycopg2 to process NOTIFY payloads.")
 
         dl = [defer.Deferred() for _ in range(10)]
-        payloads = map(str, range(10))
+        payloads = [str(i) for i in  range(10)]
         notifyD = defer.DeferredList(dl)
 
         def observer(notify):
@@ -1511,7 +1511,7 @@ class TxPostgresNotifyTestCase(_SimpleDBSetupMixin, Psycopg2TestCase):
         delivered only once.
         """
         dl = [defer.Deferred() for _ in range(10)]
-        payloads = map(str, range(10))
+        payloads = [str(i) for i in range(10)]
         notifyD = defer.DeferredList(dl)
 
         def observer(notify):
