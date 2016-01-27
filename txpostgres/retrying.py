@@ -111,7 +111,7 @@ class RetryingCall(object):
 
     def _call(self):
         try:
-            delay = self._backoffIterator.next()
+            delay = next(self._backoffIterator)
         except StopIteration:
             self._deferred.errback(self.failure)
         else:

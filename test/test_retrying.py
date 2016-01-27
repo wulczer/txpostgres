@@ -18,9 +18,9 @@ class TestSimpleBackoffIterator(unittest.TestCase):
         it = retrying.simpleBackoffIterator()
 
         # by default "now" is set
-        self.assertEquals(it.next(), 0)
+        self.assertEquals(next(it), 0)
 
-        r1, r2, r3 = it.next(), it.next(), it.next()
+        r1, r2, r3 = next(it), next(it), next(it)
         self.assertTrue(r1 < r2 < r3)
 
     def test_maxDelay(self):
@@ -29,7 +29,7 @@ class TestSimpleBackoffIterator(unittest.TestCase):
         """
         it = retrying.simpleBackoffIterator(maxDelay=2.0)
 
-        res = [it.next() for _ in range(5)]
+        res = [next(it) for _ in range(5)]
         self.assertEquals(res[-1], 2.0)
 
     def test_notNow(self):
@@ -37,7 +37,7 @@ class TestSimpleBackoffIterator(unittest.TestCase):
         If now is not set, the first delay is not zero.
         """
         it = retrying.simpleBackoffIterator(now=False)
-        self.assertNotEquals(it.next(), 0)
+        self.assertNotEquals(next(it), 0)
 
     def test_maxRetries(self):
         """
@@ -45,8 +45,8 @@ class TestSimpleBackoffIterator(unittest.TestCase):
         """
         it = retrying.simpleBackoffIterator(maxRetries=3)
 
-        it.next(), it.next(), it.next()
-        self.assertRaises(StopIteration, it.next)
+        next(it), next(it), next(it)
+        self.assertRaises(StopIteration, lambda: next(it))
 
     def test_noMaxRetries(self):
         """
@@ -54,7 +54,7 @@ class TestSimpleBackoffIterator(unittest.TestCase):
         """
         it = retrying.simpleBackoffIterator(maxRetries=0, maxDelay=1)
 
-        alot = [it.next() for _ in range(1000)]
+        alot = [next(it) for _ in range(1000)]
         self.assertEquals(alot[-1], 1)
 
     def test_noMaxDelay(self):
@@ -64,7 +64,7 @@ class TestSimpleBackoffIterator(unittest.TestCase):
         it = retrying.simpleBackoffIterator(maxRetries=0, maxDelay=0)
 
         # putting range(1000) here makes Python return a NaN, so be moderate
-        alot = [it.next() for _ in range(100)]
+        alot = [next(it) for _ in range(100)]
         self.assertTrue(alot[-2] < alot[-1])
 
     def test_precise(self):
@@ -75,12 +75,12 @@ class TestSimpleBackoffIterator(unittest.TestCase):
         it = retrying.simpleBackoffIterator(initialDelay=10, maxDelay=90,
                                             factor=2, jitter=0)
 
-        self.assertEquals(it.next(), 0)
-        self.assertEquals(it.next(), 20)
-        self.assertEquals(it.next(), 40)
-        self.assertEquals(it.next(), 80)
-        self.assertEquals(it.next(), 90)
-        self.assertEquals(it.next(), 90)
+        self.assertEquals(next(it), 0)
+        self.assertEquals(next(it), 20)
+        self.assertEquals(next(it), 40)
+        self.assertEquals(next(it), 80)
+        self.assertEquals(next(it), 90)
+        self.assertEquals(next(it), 90)
 
 
 class TestRetryingCall(unittest.TestCase):
