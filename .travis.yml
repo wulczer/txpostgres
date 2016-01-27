@@ -3,6 +3,7 @@ language: python
 python:
   - 2.6
   - 2.7
+  - 3.5
   # - pypy
 
 env:
@@ -31,6 +32,15 @@ matrix:
       # disable tests with select temporarily
     - python: 2.7
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=select
+
+    - python: 3.5
+      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=select
+    - python: 3.5
+      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=poll
+    - python: 3.5
+      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=epoll
+    - python: 3.5
+      env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=gtk2
 
     - python: pypy
       env: TXPOSTGRES_TEST_HOST=127.0.0.1 TXPOSTGRES_TEST_USER=postgres REACTOR=select

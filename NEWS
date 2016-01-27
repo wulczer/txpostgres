@@ -1,3 +1,9 @@
+What's new in txpostgres 1.6.0
+------------------------------
+
+  - Python 3 compatibility, the test suite now passes in Python 3.4
+    and 3.5 using latest Twisted trunk
+
 What's new in txpostgres 1.5.0
 ------------------------------
 
