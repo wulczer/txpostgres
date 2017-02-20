@@ -671,6 +671,14 @@ class Connection(_PollingMixin):
         # check for NOTIFY events
         self.checkForNotifies()
 
+        # check to make sure we still have a valid fd as this
+        # doRead call could be caused by a closed socket from the
+        # other end of our connection, causing a fd = -1 which
+        # will throw an error in the pollreactor.addReader
+        if self.fileno() < 0:
+            self.close()
+            return
+
         # continue watching for NOTIFY events, but be careful to check the
         # connection state in case one of the notify handler function caused a
         # disconnection
