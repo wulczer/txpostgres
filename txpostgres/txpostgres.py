@@ -454,6 +454,13 @@ class Connection(_PollingMixin):
         d = self.poll()
         return d.addCallback(startReadingAndPassthrough)
 
+    @property
+    def disconnected(self):
+        # This attribute even though is not a part of IWriteDescriptor
+        # interface is used by gtk2reactor in Twisted 10.2.0.
+        # Without it txpostgres will not work under gtk reactor.
+        return self._connection.closed
+
     def close(self):
         """
         Close the connection and disconnect from the database.
