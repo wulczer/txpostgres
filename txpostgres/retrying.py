@@ -15,7 +15,7 @@ list of past failures.
 
 import random
 
-from twisted.internet import reactor, defer, task
+from twisted.internet import defer, task
 from twisted.python import failure
 
 
@@ -90,6 +90,7 @@ class RetryingCall(object):
 
     def __init__(self, f, *args, **kw):
         if self.reactor is None:
+            from twisted.internet import reactor
             self.reactor = reactor
         self._f = f
         self._args = args
